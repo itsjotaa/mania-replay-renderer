@@ -1,0 +1,5 @@
+build/
+*.osr
+*.osu
+assets/audio.mp3
+output.mp4

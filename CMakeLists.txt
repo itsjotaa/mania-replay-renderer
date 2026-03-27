@@ -3,7 +3,11 @@ project(ManiaReplayRenderer)
 
 set(CMAKE_CXX_STANDARD 17) 
 
-find_package(SFML 3 REQUIRED COMPONENTS Graphics Window System) 
+list(APPEND CMAKE_PREFIX_PATH "/usr/local")
+
+find_package( SFML 3 REQUIRED COMPONENTS Graphics Window System)
+find_package(nfd REQUIRED PATHS /usr/local/lib/cmake/nfd)
+message(STATUS "nfd found: ${nfd_FOUND}")
 
 file(GLOB_RECURSE SOURCES src/*.cpp) 
 
@@ -16,4 +20,6 @@ target_link_libraries(mania-renderer
 	SFML::Window
 	SFML::System
 	lzma
+	nfd::nfd
+	wayland-client
 ) 

@@ -269,6 +269,17 @@ void Renderer::preview(
     auto startWall = std::chrono::steady_clock::now();
     long long startOffset = notes.empty() ? 0 : notes[0].note.startTime - 2000;
 
+    // back button for preview
+    sf::RectangleShape backBtn({120.f, 36.f});
+    backBtn.setPosition({10.f, 10.f});
+    backBtn.setFillColor(sf::Color(50, 50, 70));
+    backBtn.setOutlineThickness(1);
+    backBtn.setOutlineColor(sf::Color(100, 180, 255));
+
+    sf::Text backLabel(font_, "< Back", 16);
+    backLabel.setFillColor(sf::Color(220, 220, 220));
+    backLabel.setPosition({18.f, 16.f});
+
     while (window_.isOpen()) {
         // calcular el tiempo actual del replay
         auto now = std::chrono::steady_clock::now();
@@ -286,6 +297,12 @@ void Renderer::preview(
                     window_.close();
                 }
             }
+            if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+                sf::Vector2f pos = {(float)click->position.x, (float)click->position.y};
+                 if (backBtn.getGlobalBounds().contains(pos)) {
+                    window_.close();
+    }
+}
         }
 
         // encontrar el estado de teclas en el momento actual

@@ -1,23 +1,39 @@
 #include <iostream>
+#include <string>
 #include "parser/OsrParser.hpp"
 #include "parser/OsuParser.hpp"
 #include "engine/ReplayProcessor.hpp"
 #include "engine/ScrollCalculator.hpp"
 #include "renderer/Renderer.hpp"
+#include "ui/UI.hpp"
 
 int main() {
-    auto replay  = parseOsr("test.osr");
-    auto beatmap = parseOsu("test.osu");
-    auto notes   = processReplay(beatmap, replay);
+    std::string osrPath, osuPath, audioPath;
 
-    ScrollCalculator scroll(beatmap.timingPoints, 10.0);
-    Renderer renderer(1280, 720);
+    while (true) {
+        int w = 1280, h = 720, fps = 60;
+        double scroll = 10.0;
 
-    // preview para verificar que se ve bien
-    // renderer.preview(notes, scroll, replay, beatmap);
+        UI ui(820, 600);
+        bool doExport = ui.run(osrPath, osuPath, audioPath, w, h, fps, scroll);
 
-    // exportar a MP4
-    renderer.exportVideo(notes, scroll, replay, beatmap, "output.mp4", "assets/audio.mp3");
+        if (osrPath.empty() || osuPath.empty()) {
+            break;
+        }
+
+        auto replay  = parseOsr(osrPath);
+        auto beatmap = parseOsu(osuPath);
+        auto notes   = processReplay(beatmap, replay);
+        ScrollCalculator scrollCalc(beatmap.timingPoints, scroll);
+        Renderer renderer(w, h);
+
+        if (doExport) {
+            renderer.exportVideo(notes, scrollCalc, replay, beatmap, "output.mp4", audioPath, fps);
+            break;
+        } else {
+            renderer.preview(notes, scrollCalc, replay, beatmap);
+        }
+    }
 
     return 0;
 }

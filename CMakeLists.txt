@@ -27,7 +27,7 @@ target_link_libraries(mania-renderer
 	SFML::Graphics 
 	SFML::Window
 	SFML::System
-	&{LZMA_LIB}
+	${LZMA_LIB}
 	nfd::nfd
 
 ) 

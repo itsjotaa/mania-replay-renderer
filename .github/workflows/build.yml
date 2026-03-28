@@ -37,11 +37,7 @@ jobs:
         run: |
           git clone --depth 1 --branch 3.0.0 https://github.com/SFML/SFML.git
           cd SFML
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=ON
-            -DSFML_BUILD_AUDIO=OFF \
-            -DSFML_BUILD_NETWORK=OFF
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DSFML_BUILD_AUDIO=OFF -DSFML_BUILD_NETWORK=OFF
           ninja -C build
           sudo ninja -C build install
           sudo ldconfig

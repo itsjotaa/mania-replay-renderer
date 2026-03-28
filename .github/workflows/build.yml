@@ -7,6 +7,7 @@ on:
     types: [ created ]
 
 jobs:
+
   build-linux:
     runs-on: ubuntu-24.04
     steps:
@@ -17,12 +18,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake ninja-build \
-            libsfml-dev \
             ffmpeg \
             liblzma-dev \
             libgtk-3-dev \
             libwayland-dev \
-            pkg-config
+            pkg-config \
+            libfreetype-dev \
+            libudev-dev \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev
+
+      - name: Build SFML 3
+        run: |
+          git clone --depth 1 --branch 3.0.0 https://github.com/SFML/SFML.git
+          cd SFML
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          ninja -C build
+          sudo ninja -C build install
+          sudo ldconfig
 
       - name: Build nativefiledialog-extended
         run: |

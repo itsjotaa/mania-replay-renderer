@@ -1,5 +1,12 @@
 #include "FFmpegPipe.hpp"
 #include <stdexcept>
+#include <cstdio> 
+
+// Windows compatibility 
+#ifdef _WIN32
+    #define popen _popen 
+    #define pclose _pclose 
+#endif
 
 FFmpegPipe::FFmpegPipe(
     const std::string& outputPath,

@@ -15,11 +15,23 @@ add_executable(mania-renderer ${SOURCES})
 
 target_include_directories(mania-renderer PRIVATE src)
 
+# find lzma 
+if(WIN32)
+	find_package(LibLZMA REQUIRED) 
+	set(LZMA_LIB LibLZMA::LibLZMA)
+else()
+	set(LZMA_LIB lzma)
+endif()
+
 target_link_libraries(mania-renderer
 	SFML::Graphics 
 	SFML::Window
 	SFML::System
-	lzma
+	&{LZMA_LIB}
 	nfd::nfd
-	wayland-client
+
 ) 
+
+if(UNIX)
+	target_link_libraries(mania-renderer wayland-client)
+endif()

@@ -1,0 +1,90 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build \
+            libsfml-dev \
+            ffmpeg \
+            liblzma-dev \
+            libgtk-3-dev \
+            libwayland-dev \
+            pkg-config
+
+      - name: Build nativefiledialog-extended
+        run: |
+          git clone https://github.com/btzy/nativefiledialog-extended.git
+          cd nativefiledialog-extended
+          git submodule update --init --recursive
+          cmake -B build -G Ninja
+          ninja -C build
+          sudo ninja -C build install
+
+      - name: Build project
+        run: |
+          cmake -B build -G Ninja
+          ninja -C build
+
+      - name: Package
+        run: |
+          mkdir -p release/assets
+          cp build/mania-renderer release/
+          cp assets/font.ttf release/assets/
+          tar -czf mania-replay-renderer-linux.tar.gz -C release .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: mania-replay-renderer-linux.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SFML
+        run: |
+          vcpkg install sfml:x64-windows
+          vcpkg install liblzma:x64-windows
+
+      - name: Build nativefiledialog-extended
+        run: |
+          git clone https://github.com/btzy/nativefiledialog-extended.git
+          cd nativefiledialog-extended
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake --build build --config Release
+          cmake --install build
+
+      - name: Build project
+        run: |
+          cmake -B build `
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake --build build --config Release
+
+      - name: Package
+        run: |
+          mkdir release
+          mkdir release\assets
+          copy build\Release\mania-renderer.exe release\
+          copy assets\font.ttf release\assets\
+          Compress-Archive -Path release\* -DestinationPath mania-replay-renderer-windows.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: mania-replay-renderer-windows.zip

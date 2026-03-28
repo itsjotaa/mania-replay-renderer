@@ -2,18 +2,18 @@
 #include <string> 
 #include <vector> 
 
-//una nota del beatmap
+// beatmap note 
 struct Note {
-    int column;         // 0-3 para 4K 
+    int column;         // 0-3 for 4K 
     long long startTime; // ms
-    long long endTime;  // ms, igual que startime si no es hold note 
+    long long endTime;  // ms, same as startime if not a hold note  
     bool isHold; 
 };
 
-// un punto de timing, define BPM o scroll velocity 
+// a timing point, defines BPM or scroll velocity 
 struct TimingPoint { 
-    long long offset;   // en que momento aplica (ms)
-    double msPerBeat;   // si es positivo: BPM real. si es negativo: SV
+    long long offset;   // when thits point takes effect (ms)
+    double msPerBeat;   // if positive: real BPM. if negative: SV
     bool isInherited;   // false = BPM, true = SV 
 }; 
 

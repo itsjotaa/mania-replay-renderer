@@ -9,7 +9,7 @@ class Renderer {
 public:
     Renderer(int width, int height);
 
-    // reproduce el replay en una ventana en tiempo real
+    // reproduces the replay in a real time window
     void preview(
         const std::vector<ProcessedNote>& notes,
         const ScrollCalculator& scroll,
@@ -28,7 +28,7 @@ public:
 );
 
 private:
-    // funciones de dibujo
+    // draw functions
     void drawBackground();
     void drawColumns();
     void drawNotes(const std::vector<ProcessedNote>& notes,
@@ -39,10 +39,10 @@ private:
     sf::RenderWindow window_;
     int width_;
     int height_;
-    int hitY_;       // Y de la línea de juicio
-    int colWidth_;   // ancho de cada columna en píxeles
+    int hitY_;       // Y coordinate of the judgement line
+    int colWidth_;   // width of each column in pixels
 
-    // colores para cada judgement
+    // colours for each judgement 
     sf::Color colorForJudgement(Judgement j) const;
 
        void drawHUD(const std::vector<ProcessedNote>& notes, long long currentTime, sf::RenderTarget& target);

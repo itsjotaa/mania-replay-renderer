@@ -14,22 +14,22 @@ FFmpegPipe::FFmpegPipe(
     std::string audioMap   = "";
 
     if (!audioPath.empty()) {
-        // -ss indica desde qué segundo empezar el audio
-        // si el video empieza antes que las notas, hay que saltar ese tiempo
+        // -ss sets the audio start offset in seconds
+        // if the video starts before, skip that amount of time 
         double offsetSec = audioOffsetMs / 1000.0;
         audioInput = "-ss " + std::to_string(offsetSec) + " -i " + audioPath + " ";
         audioMap   = "-map 0:v -map 1:a -c:a aac ";
     }
 
-    // construir el comando ffmpeg
-    // -f rawvideo        → el input es video crudo sin comprimir
-    // -pixel_format rgba → cada pixel son 4 bytes: R, G, B, A
-    // -video_size        → resolución del video
-    // -framerate         → cuadros por segundo
-    // -i pipe:0          → leer desde stdin
-    // -c:v libx264       → comprimir con H.264
-    // -pix_fmt yuv420p   → formato compatible con la mayoría de reproductores
-    // -preset fast       → balance entre velocidad y compresión
+    // build the ffmpeg command
+    // -f rawvideo        → input is raw video without compression
+    // -pixel_format rgba → each pixel are 4 bytes: R, G, B, A 
+    // -video_size        → video resolution 
+    // -framerate         → frames per second
+    // -i pipe:0          → read from stdin
+    // -c:v libx264       → compress with H.264
+    // -pix_fmt yuv420p   → compatible format with most of media players 
+    // -preset fast       → balance between speed and compress 
     std::string cmd =
         "ffmpeg -y "
         "-f rawvideo "
@@ -44,10 +44,9 @@ FFmpegPipe::FFmpegPipe(
         + audioMap
         + outputPath;
 
-    printf("FFmpeg cmd: %s\n", cmd.c_str());
     pipe_ = popen(cmd.c_str(), "w");
     if (!pipe_) {
-        throw std::runtime_error("no se pudo abrir el pipe a ffmpeg");
+        throw std::runtime_error("could not open ffmpeg pipe");
     }
 }
 

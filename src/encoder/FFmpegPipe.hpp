@@ -9,7 +9,7 @@ public:
         const std::string& audioPath = "", double audioOffsetMs = 0.0);
     ~FFmpegPipe();
 
-    // escribe un frame raw RGBA al pipe de ffmpeg
+    // write a raw RGBA frame to ffmpeg pipe
     void writeFrame(const uint8_t* pixels, size_t size);
 
     bool isOpen() const { return pipe_ != nullptr; }

@@ -2,119 +2,118 @@
 #include <cmath>
 #include <algorithm>
 
-// las ventanas de tiempo para cada jugador (en ms)
-// si la diferencia entre el hit y la nota es menor a este valor -> ese judgement
-static const long long WINDOW_320 = 16; 
-static const long long WINDOW_300 = 40; 
-static const long long WINDOW_200 = 73; 
-static const long long WINDOW_100 = 103; 
-static const long long WINDOW_50 = 127; 
-static const long long WINDOW_MISS = 161; 
+// time windows for each judgement (in ms)
+// if the difference between hit and note is less than this value -> that judgement
+static const long long WINDOW_320  = 16;
+static const long long WINDOW_300  = 40;
+static const long long WINDOW_200  = 73;
+static const long long WINDOW_100  = 103;
+static const long long WINDOW_50   = 127;
+static const long long WINDOW_MISS = 161;
 
-// convierte una diferencia de tiempo a un judgement 
-// diff = |tiempo_hit - tiempo_nota| en ms 
-static Judgement getJudgement(long long diff) { 
-    if (diff <= WINDOW_320) return Judgement::J320; 
+// converts a time difference to a judgement
+// diff = |hit_time - note_time| in ms
+static Judgement getJudgement(long long diff) {
+    if (diff <= WINDOW_320) return Judgement::J320;
     if (diff <= WINDOW_300) return Judgement::J300;
-    if (diff <= WINDOW_200) return Judgement::J200; 
-    if (diff <= WINDOW_100) return Judgement::J100; 
-    if (diff <= WINDOW_50) return Judgement::J50; 
-    return Judgement::MISS; 
+    if (diff <= WINDOW_200) return Judgement::J200;
+    if (diff <= WINDOW_100) return Judgement::J100;
+    if (diff <= WINDOW_50)  return Judgement::J50;
+    return Judgement::MISS;
 }
 
-// verifica si la columna 'col' esta activa en el bitmask 'keys'
-// col va de 0  3 
-// ejemplo: col=2, keys=0110 -> (0110 >> 2) & 1 = 1 -> activa 
+// checks if column 'col' is active in the bitmask 'keys'
+// col ranges from 0 to 3
+// example: col=2, keys=0110 -> (0110 >> 2) & 1 = 1 -> active
 static bool isColumnActive(int keys, int col) {
-    return ((keys >> col) & 1) != 0; 
+    return ((keys >> col) & 1) != 0;
 }
 
 std::vector<ProcessedNote> processReplay(
-    const BeatmapData& beatmap, 
-    const ReplayData& replay 
+    const BeatmapData& beatmap,
+    const ReplayData& replay
 ) {
-    // inicializar todas las notas como MISS sin hit 
-    std::vector<ProcessedNote> result; 
+    // initialize all notes as MISS with no hit
+    std::vector<ProcessedNote> result;
     for (const auto& note : beatmap.notes) {
-        result.push_back({note, Judgement::MISS, -1}); 
+        result.push_back({note, Judgement::MISS, -1});
     }
 
-    // para cada columna, llevar registro de que notas ya fueron asignadas
-    // esto evita que un keypress matchee dos notas a la vez 
-    // ejemplo: si notes[0] y notes[1] son de col=0 y notes[0] ya fue hit, 
-    // el proximo keypress en col=0 solo puede matchear notes[1] en adelante
-    std::vector<int> nextUnmatched(beatmap.keyCount, 0); 
+    // track which notes have already been matched per column
+    // prevents a keypress from matching two notes at once
+    // example: if notes[0] and notes[1] are in col=0 and notes[0] was hit,
+    // the next keypress in col=0 can only match notes[1] onwards
+    std::vector<int> nextUnmatched(beatmap.keyCount, 0);
 
-    //recorrer todos los frames del replay buscando keypresses nuevos
-    int prevKeys = 0; // estado de teclado en el frame anterior
+    // iterate all replay frames looking for new keypresses
+    int prevKeys = 0; // key state from the previous frame
 
     long long firstNoteTime = result.empty() ? 0 : result[0].note.startTime;
-    printf("firstNoteTime = %lld\n", firstNoteTime); 
 
     for (const auto& frame : replay.frames) {
-        int currKeys = frame.keys; 
+        int currKeys = frame.keys;
 
-        // ignorar frames que ocurren antes de que empiece el mapa 
-        // (son inputs del menu de osu!)
+        // skip frames that occur before the map starts
+        // (these are inputs from the osu! menu)
         if (frame.timestamp < firstNoteTime - WINDOW_MISS) {
-            prevKeys = currKeys; // actualizar igual para no acumular diferencias
-            continue; 
+            prevKeys = currKeys; // still update to avoid accumulating diffs
+            continue;
         }
 
-        // detectar que columnas fueron presionadas en este frame 
-        // usando XOR para encontrar bits que cambiaron 
-        // y AND con currKeys para quedarnos solo con los que pasaron de 0->1
-        int newlyPressed = (currKeys ^ prevKeys) & currKeys; 
+        // detect which columns were pressed in this frame
+        // XOR finds bits that changed
+        // AND with currKeys keeps only bits that went from 0 to 1
+        int newlyPressed = (currKeys ^ prevKeys) & currKeys;
 
-        // para cada columna posible (0 a keyCount-1)
+        // for each possible column (0 to keyCount-1)
         for (int col = 0; col < beatmap.keyCount; col++) {
 
-            // verificar si esta columna especifica fue presionada ahora
-            if (!isColumnActive(newlyPressed, col)) continue; 
+            // check if this specific column was just pressed
+            if (!isColumnActive(newlyPressed, col)) continue;
 
-            // buscar la nota mas cercana sin asignar en esta columna 
-            // partimos desde nextUnmatched[col] para no revisar notas ya asignadas 
-            int bestIdx = -1; 
-            long long bestDiff = WINDOW_MISS + 1; // peor que miss 
+            // find the closest unmatched note in this column
+            // start from nextUnmatched[col] to skip already matched notes
+            int bestIdx = -1;
+            long long bestDiff = WINDOW_MISS + 1; // worse than miss
 
             for (int i = nextUnmatched[col]; i < (int)result.size(); i++) {
-                // solo considerar notas de esta columna 
-                if (result[i].note.column != col) continue; 
+                // only consider notes in this column
+                if (result[i].note.column != col) continue;
 
-                // si esta nota ya fye asignada, saltarla
-                if (result[i].hitTime != -1) continue; 
+                // skip already matched notes
+                if (result[i].hitTime != -1) continue;
 
                 long long diff = std::abs(frame.timestamp - result[i].note.startTime);
 
-                // si la nota ya paso por mas de WINDOW_MISS, no tiene sentido 
-                // seguir buscando, las siguientes notas son aun mas lejanas 
-                if (frame.timestamp - result[i].note.startTime > WINDOW_MISS) { 
-                    //actualizar nextUnmatched para no revisar esa nota de nuevo 
-                    nextUnmatched[col] = i + 1; 
+                // if the note passed by more than WINDOW_MISS, no point searching further
+                // the following notes are even further away
+                if (frame.timestamp - result[i].note.startTime > WINDOW_MISS) {
+                    // advance nextUnmatched so we never check this note again
+                    nextUnmatched[col] = i + 1;
                     continue;
                 }
 
-                // si la nota esta muy en el futuro, tampoco sirve 
-                if (result[i].note.startTime - frame.timestamp > WINDOW_MISS) break; 
+                // if the note is too far in the future, stop
+                if (result[i].note.startTime - frame.timestamp > WINDOW_MISS) break;
 
-                // esta nota esta dentro de la ventana -> es candidat 
-                if (diff < bestDiff) { 
-                    bestDiff = diff; 
-                    bestIdx = i; 
+                // this note is within the window -> it is a candidate
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestIdx  = i;
                 }
             }
 
-            // si encontramos una nota candidata, asignarla
+            // if a candidate was found, assign the hit
             if (bestIdx != -1) {
-                result[bestIdx].judgement = getJudgement(bestDiff); 
-                result[bestIdx].hitTime   = frame.timestamp; 
+                result[bestIdx].judgement = getJudgement(bestDiff);
+                result[bestIdx].hitTime   = frame.timestamp;
             }
-            // si no encontramos ninguna -> keypress sin nota (no afecta nada)
+            // if none found -> keypress with no note (has no effect)
         }
 
-        prevKeys = currKeys; // actualizar el estado anterior
+        prevKeys = currKeys; // update previous key state
     }
 
-    // las noras que quedaron con hitTime == -1 ya estan marcadas como MISS 
-    return result; 
+    // notes that still have hitTime == -1 are already marked as MISS
+    return result;
 }

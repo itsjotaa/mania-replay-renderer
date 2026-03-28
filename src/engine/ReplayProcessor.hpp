@@ -3,25 +3,25 @@
 #include "parser/OsuParser.hpp"
 #include <vector> 
 
-//el resultado de juzgar una nota 
+// result of judging a note 
 enum class Judgement {
-    NONE,         // todavia no se juzgo (no deberia aparecer en el resultado final) 
-    J320,         // perfecto
-    J300,         // excelente 
-    J200,         // bueno 
+    NONE,         // not yet judged (should not appear in the final result) 
+    J320,         // perfect
+    J300,         // excellent
+    J200,         // good
     J100,         // ok
-    J50,          // mal
-    MISS,         // no llego ningun input a tiempo 
+    J50,          // bad
+    MISS,         // no input arrived in time 
 };
 
-// una nots del beatmap con su resultado 
+// a beatmap note with its judgement result 
 struct ProcessedNote { 
-    Note note;              // la nota original (colunma, tiempo, etc)
-    Judgement judgement;    // como salio 
-    long long hitTime;      // en que momento se presiono (-1 si miss)
+    Note note;              // original note (column, time, etc)
+    Judgement judgement;    // how it was judged
+    long long hitTime;      // when it was pressed(-1 if miss)
 };
 
-// funcion principal del modulo 
+// main module function
 std::vector<ProcessedNote> processReplay(
     const BeatmapData& beatmap,
     const ReplayData& replay

@@ -3,7 +3,7 @@
 #include <string>
 #include <functional>
 
-// un botón clickeable simple
+// a simple clickable button 
 struct Button {
     sf::RectangleShape rect;
     sf::Text label;
@@ -29,13 +29,13 @@ struct TextInput {
     void draw(sf::RenderWindow& window);
 };
 
-// la pantalla principal de selección de archivos
+// main screen for file selection 
 class UI {
 public:
     UI(int width, int height);
 
-    // muestra la ventana y devuelve true si el usuario confirmó
-    // llena los paths con los archivos seleccionados
+    // shows the window and return true if the user confirmed
+    // fills the paths with the selected files 
     bool run(std::string& osrPath, std::string& osuPath, std::string& audioPath, 
              int& outWidth, int& outHeight, int& outFps, double& outScroll);
 

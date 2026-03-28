@@ -2,19 +2,19 @@
 #include <string>
 #include <vector> 
 
-// representa un momento en el tuempo donde el jugador 
-// tenia ciertas teclas presiondas 
+// represent a point in time where the player 
+// had certain keys pressed 
 struct KeyFrame {
-    long long timestamp; // tiempo absoluto en ms desde el inicio 
+    long long timestamp; // absolute timestamp in ms from the start   
     int keys;            // bitmask: bit0=col1,  bit1=col2, bit2=col3, bit3=col4
 
 };
 
-// toda la informacion del replay 
+// full replay information
 struct ReplayData { 
-    std::string beatmapHash;   // MD5 del beatmap, para identificar cual es 
+    std::string beatmapHash;   // MD5 hash from the beatmap, used to identify which map was played   
     std::string playerName; 
-    int count320;              // judgements (en mania: 320, 300, 200, 100, 50, miss)
+    int count320;              // judgements counts (in mania: 320, 300, 200, 100, 50, miss)
     int count300;
     int count200;
     int count100;
@@ -25,5 +25,5 @@ struct ReplayData {
     std::vector<KeyFrame> frames; 
 };
 
-// funcion principal del modulo 
+// main module function
 ReplayData parseOsr(const std::string& path);

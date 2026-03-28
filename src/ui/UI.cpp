@@ -92,7 +92,7 @@ void TextInput::draw(sf::RenderWindow& window) {
 UI::UI(int width, int height)
     : width_(width), height_(height)
 {
-    font_.openFromFile("assets/font.ttf");
+    (void)font_.openFromFile("assets/font.ttf");
 }
 
 void UI::drawFileRow(sf::RenderWindow& window, const std::string& label,

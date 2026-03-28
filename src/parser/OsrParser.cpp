@@ -4,26 +4,25 @@
 #include <sstream> 
 #include <lzma.h>
 
-// helper: lee un string con el formato especial de osu! 
-// formato: [1 byte indicador] [1 byte tamano] [N bytes de texto]
+// helper: read a string with osu! special format 
 static std::string readOsuString(FILE* f) {
     uint8_t indicator; 
     fread(&indicator, 1, 1, f);
     
     if (indicator == 0x00) {
-        return ""; // string vacio 
+        return ""; // empty string  
     }
 
-    // leer tamano en ULEB128
-    // para string cortos (< 128 chars) es solo 1 byte
-    // para strings mas largos se leen mas bytes 
+    // read size in ULEB128
+    // short strings (< 128 chars) are 1 byte
+    // read more bytes for longer strings   
     uint32_t length = 0; 
     int shift = 0; 
     while (true) {
         uint8_t byte; 
         fread(&byte, 1, 1, f);
-        length |= (byte & 0x7F) << shift; //tomar los 7 bits utiles 
-        if ((byte & 0x80) == 0) break;    // si el bit 8 es 0, terminamos
+        length |= (byte & 0x7F) << shift; // take 7 useful bits  
+        if ((byte & 0x80) == 0) break;    // if bit 8 is 0, ends
         shift += 7; 
     }
 
@@ -33,14 +32,14 @@ static std::string readOsuString(FILE* f) {
 }
 
 static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed) { 
-    //buffer para los datos descomprimidos
+    // buffer for compressed data
     std::vector<uint8_t> decompressed(10 *1024 * 1024); 
 
     lzma_stream strm = LZMA_STREAM_INIT; 
-    //LZMA_ALONE es el formato que usa osu! (disntinto al formato .xz)
+    //LZMA_ALONE is the format osu! uses 
     lzma_ret ret = lzma_alone_decoder(&strm, UINT64_MAX); 
     if (ret != LZMA_OK) {
-        throw std::runtime_error("error iniciando el decoder LZMA"); 
+        throw std::runtime_error("failed to initialize LZMA decoder"); 
     }
 
     strm.next_in = compressed.data(); 
@@ -52,12 +51,12 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
     size_t totalOut = decompressed.size() - strm.avail_out; 
     lzma_end(&strm); 
 
-    // convertir los bytes descomprimidos en string de texto 
+    // convert descompressed bytes to text string
     std::string text(decompressed.begin(), decompressed.begin() + totalOut); 
 
-    // parsear frame por frame
-    // cada frame tiene el formato: delta|keys|x|y
-    // y los frames estan separados por comas 
+    // parse frame per frame
+    // format for each frame is: delta|keys|x|y 
+    // frames are separated by commas  
     std::vector<KeyFrame> frames; 
     long long currentTime = 0; 
 
@@ -67,7 +66,7 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
     while (std::getline(ss, frameStr, ',')) {
         if (frameStr.empty()) continue; 
 
-        //separa los 4 campos '|'
+        //split 4 fields by '|'
         std::stringstream ss2(frameStr); 
         std::string part; 
         std::vector<std::string> parts; 
@@ -79,7 +78,7 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
         long long delta = std::stoll(parts[0]); 
         int keys        = std::stoi(parts[1]); 
 
-        //deltas negativos son frames especiales de metadata, se ignoran
+        // negatives deltas are metadata frames. skip them
         if (delta < 0) continue; 
 
         currentTime += delta; 
@@ -91,27 +90,26 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
 
 ReplayData parseOsr(const std::string& path) {
     FILE* f = fopen(path.c_str(), "rb"); 
-    if (!f) throw std::runtime_error("no se pudo abrir: " + path); 
+    if (!f) throw std::runtime_error("could not open: " + path); 
 
     ReplayData data; 
 
-    // modo de juego (1 byte), debe ser 3 para mania
+    // game mode (1 byte), should be 3 for mania 
     uint8_t mode; 
     fread(&mode, 1, 1, f); 
-    if (mode != 3) throw std::runtime_error("el replay no es de mania"); 
+    if (mode != 3) throw std::runtime_error("replay is not osu!mania"); 
 
-    // version del cliente (4 bytes), no se necesita pero hay que leerla 
-    // para avanzar la posicion en el archivo 
+    // client version (4 bytes), need to read it to advance file position  
 
     uint32_t version; 
     fread(&version, 4, 1, f); 
 
-    // string del header 
+    // header string 
     data.beatmapHash = readOsuString(f); 
     data.playerName  = readOsuString(f);
-    readOsuString(f); // hash del replay, no se necesita 
+    readOsuString(f); // hash replay  
     
-    //judgements (2 bytes cada uno)
+    //judgements (2 bytes each one)
     uint16_t v; 
     fread(&v, 2, 1, f); data.count300  = v; 
     fread(&v, 2, 1, f); data.count100  = v; 
@@ -120,7 +118,7 @@ ReplayData parseOsr(const std::string& path) {
     fread(&v, 2, 1, f); data.count200  = v; 
     fread(&v, 2, 1, f); data.countMiss = v; 
 
-    // score y combo (4 y 2 bytes)
+    // score and combo (4 and 2 bytes)
     uint32_t score;
     fread(&score, 4, 1, f);
     data.totalScore = score;
@@ -128,20 +126,20 @@ ReplayData parseOsr(const std::string& path) {
     fread(&v, 2, 1, f);
     data.maxCombo = v;
 
-    // perfect flag (1 byte), no lo necesitamos
+    // perfect flag (1 byte), not needed 
     uint8_t perfect;
     fread(&perfect, 1, 1, f);
 
-    // mods (4 bytes), no los necesitamos por ahora
+    // mods (4 bytes), not needed for now 
     uint32_t mods;
     fread(&mods, 4, 1, f);
 
-    // barra de vida y timestamp,  no los necesitamos
+    // health bard and timestamp, not needed
     readOsuString(f);
     uint64_t timestamp;
     fread(&timestamp, 8, 1, f);
 
-    // leer el bloque comprimido
+    // read compressed block
     uint32_t compressedSize;
     fread(&compressedSize, 4, 1, f);
 
@@ -150,7 +148,7 @@ ReplayData parseOsr(const std::string& path) {
 
     fclose(f);
 
-    // descomprimir y parsear los frames
+    // decompress and parse frames
     data.frames = parseFrames(compressed);
 
     return data;

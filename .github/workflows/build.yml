@@ -39,6 +39,7 @@ jobs:
           cd SFML
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON
             -DSFML_BUILD_AUDIO=OFF \
             -DSFML_BUILD_NETWORK=OFF
           ninja -C build

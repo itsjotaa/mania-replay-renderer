@@ -67,8 +67,7 @@ By default the program looks for:
 
 ## Roadmap
 
-- [ ] CLI arguments for input/output paths
-- [ ] Graphical file picker (v0.2)
+- [x] Graphical file picker (v0.2)
 - [ ] Windows support (v0.3)
 - [ ] Skin support
 - [ ] Multiple keymodes (7K, 9K)

@@ -68,7 +68,7 @@ By default the program looks for:
 ## Roadmap
 
 - [x] Graphical file picker (v0.2)
-- [ ] Windows support (v0.3)
+- [x] .osz support + auto-detect beatmap (v0.3)
 - [ ] Skin support
 - [ ] Multiple keymodes (7K, 9K)
 

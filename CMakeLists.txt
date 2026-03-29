@@ -13,7 +13,7 @@ file(GLOB_RECURSE SOURCES src/*.cpp)
 
 add_executable(mania-renderer ${SOURCES})
 
-target_include_directories(mania-renderer PRIVATE src)
+target_include_directories(mania-renderer PRIVATE src /usr/include/miniz)
 
 # find lzma 
 if(WIN32)
@@ -29,6 +29,7 @@ target_link_libraries(mania-renderer
 	SFML::System
 	${LZMA_LIB}
 	nfd::nfd
+	miniz
 
 ) 
 

@@ -190,7 +190,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
                         osrPath = outPath.get();
                 }
                 if (btnOsu.contains(pos)) {
-                    nfdfilteritem_t filters[] = {{"osu! Beatmap", "osu"}};
+                    nfdfilteritem_t filters[] = {{"osu! Beatmap / Map Set", "osu,osz" }};
                     if (NFD::OpenDialog(outPath, filters, 1) == NFD_OKAY)
                         osuPath = outPath.get();
                 }
@@ -200,7 +200,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
                         audioPath = outPath.get();
                 }
                 if (btnPreview.contains(pos)) {
-                    if (!osrPath.empty() && !osuPath.empty()) {
+                    if (!osrPath.empty()) {
                         outWidth  = inputWidth.value.empty()  ? 1280 : std::stoi(inputWidth.value);
                         outHeight = inputHeight.value.empty() ? 720  : std::stoi(inputHeight.value);
                         outFps    = inputFps.value.empty()    ? 60   : std::stoi(inputFps.value);
@@ -210,7 +210,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
                     }
                 }
                 if (btnExport.contains(pos)) {
-                    if (!osrPath.empty() && !osuPath.empty()) {
+                    if (!osrPath.empty()) {
                         outWidth  = inputWidth.value.empty()  ? 1280 : std::stoi(inputWidth.value);
                         outHeight = inputHeight.value.empty() ? 720  : std::stoi(inputHeight.value);
                         outFps    = inputFps.value.empty()    ? 60   : std::stoi(inputFps.value);
@@ -252,7 +252,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
 
         // file rows
         drawFileRow(window, "Replay (.osr)",  osrPath,   160, btnOsr);
-        drawFileRow(window, "Beatmap (.osu)", osuPath,   230, btnOsu);
+        drawFileRow(window, "Beatmap", osuPath,   230, btnOsu);
         drawFileRow(window, "Audio",          audioPath, 300, btnAudio);
 
         // separator

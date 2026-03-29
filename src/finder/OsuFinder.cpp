@@ -63,9 +63,15 @@ static bool isAudioFile(const fs::path& path) {
 
 // get the lazer files directory
 static fs::path getLazerFilesDir() {
-    const char* home = getenv("HOME");
-    if (!home) return {};
-    return fs::path(home) / ".local/share/osu/files";
+    #ifdef _WIN32
+        const char* appdata = getenv("APPDATA"); 
+        if (!appdata) return {};
+        return fs::path(appdata) / "osu" / "files"; 
+    #else
+        const char* home = getenv("HOME");
+        if (!home) return {};
+        return fs::path(home) / ".local/share/osu/files";
+    #endif
 }
 
 BeatmapFiles findBeatmap(const std::string& beatmapMd5) {

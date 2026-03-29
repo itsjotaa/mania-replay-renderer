@@ -110,8 +110,12 @@ jobs:
           mkdir release\assets
           copy build\Release\mania-renderer.exe release\
           copy assets\font.ttf release\assets\
-          Compress-Archive -Path release\* -DestinationPath mania-replay-renderer-windows.zip
-
+          copy C:\vcpkg\installed\x64-windows\bin\sfml-graphics-3.dll release\
+          copy C:\vcpkg\installed\x64-windows\bin\sfml-window-3.dll release\
+          copy C:\vcpkg\installed\x64-windows\bin\sfml-system-3.dll release\
+          copy C:\vcpkg\installed\x64-windows\bin\liblzma.dll release\
+          copy C:\vcpkg\installed\x64-windows\bin\miniz.dll release\
+          Compress-Archive -Path release\* -DestinationPath mania-replay-renderer-windows.zip 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

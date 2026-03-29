@@ -31,7 +31,8 @@ jobs:
             libxi-dev \
             libflac-dev \
             libogg-dev \
-            libvorbis-dev
+            libvorbis-dev \
+            libminiz-dev
 
       - name: Build SFML 3
         run: |
@@ -74,10 +75,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install SFML and lzma via vcpkg
+      - name: Install dependencies via vcpkg
         run: |
           vcpkg install sfml:x64-windows
           vcpkg install liblzma:x64-windows
+          vcpkg install miniz:x64-windows
 
       - name: Build nativefiledialog-extended
         run: |

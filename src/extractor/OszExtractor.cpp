@@ -4,7 +4,12 @@
 #include <filesystem>
 #include <iostream>
 #include <cstring>
+#include <cstdio>
 
+#ifdef _WIN32
+    #define popen _popen
+    #define pclose _pclose
+#endif
 namespace fs = std::filesystem;
 
 // write a buffer to a file

@@ -104,7 +104,13 @@ jobs:
             -DCMAKE_PREFIX_PATH=C:/nfd
           cmake --build build --config Release
 
-      - name: Package
+      - name: Download FFmpeg for Windows
+        run: |
+          curl -L -o ffmpeg.zip "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-extracted
+          copy ffmpeg-extracted\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe release\
+
+     - name: Package
         run: |
           mkdir release
           mkdir release\assets
@@ -115,7 +121,9 @@ jobs:
           copy C:\vcpkg\installed\x64-windows\bin\sfml-system-3.dll release\
           copy C:\vcpkg\installed\x64-windows\bin\liblzma.dll release\
           copy C:\vcpkg\installed\x64-windows\bin\miniz.dll release\
-          Compress-Archive -Path release\* -DestinationPath mania-replay-renderer-windows.zip 
+          ffmpeg-extracted\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe release\
+          Compress-Archive -Path release\* -DestinationPath mania-replay-renderer-windows.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

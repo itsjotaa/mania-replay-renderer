@@ -32,7 +32,14 @@ jobs:
             libflac-dev \
             libogg-dev \
             libvorbis-dev \
-            libminiz-dev
+
+      - name: Build miniz
+        run: |
+          git clone --depth 1 https://github.com/richgel999/miniz.git
+          cd miniz
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          ninja -C build
+          sudo ninja -C build install
 
       - name: Build SFML 3
         run: |

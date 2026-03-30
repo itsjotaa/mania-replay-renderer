@@ -107,6 +107,14 @@ OszContents extractOsz(const std::string& oszPath, const std::string& beatmapMd5
             }
         }
         if (isAudio && result.audioPath.empty()) {
+            auto ext = outPath.extension().string();
+            // prefer mp3/ogg over wav (wav files usually hitsounds)
+            if (ext == ".mp3" || ext == ".ogg") {
+                result.audioPath = outPath.string(); 
+            }
+        }
+        // fallback: if no mp3/ogg found, use wav
+        if (isAudio && result.audioPath.empty()) {
             result.audioPath = outPath.string();
         }
     }

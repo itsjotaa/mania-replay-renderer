@@ -24,7 +24,25 @@ static std::vector<uint8_t> readFile(const fs::path& path) {
 }
 
 // calculate MD5 of a file on disk
+// calculate MD5 of a file on disk
 static std::string fileMd5(const fs::path& path) {
+#ifdef _WIN32
+    std::string cmd = "certutil -hashfile \"" + path.string() + "\" MD5 2>nul";
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) return "";
+    char buf[128];
+    std::string output;
+    while (fgets(buf, sizeof(buf), pipe)) output += buf;
+    pclose(pipe);
+    // certutil output: line1=header, line2=hash, line3=footer
+    auto line1 = output.find('\n');
+    if (line1 == std::string::npos) return "";
+    auto line2 = output.find('\n', line1 + 1);
+    std::string hash = output.substr(line1 + 1, line2 - line1 - 1);
+    hash.erase(std::remove(hash.begin(), hash.end(), ' '), hash.end());
+    hash.erase(std::remove(hash.begin(), hash.end(), '\r'), hash.end());
+    return hash;
+#else
     std::string cmd = "md5sum \"" + path.string() + "\" 2>/dev/null";
     FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe) return "";
@@ -32,6 +50,7 @@ static std::string fileMd5(const fs::path& path) {
     fread(result, 1, 32, pipe);
     pclose(pipe);
     return std::string(result, 32);
+#endif
 }
 
 // check if a file looks like a .osu beatmap

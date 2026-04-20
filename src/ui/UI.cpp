@@ -242,7 +242,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
         window.draw(title);
 
         // version
-        sf::Text version(font_, "v0.2", 16);
+        sf::Text version(font_, "v0.4", 16);
         version.setFillColor(COL_DIM);
         version.setPosition({
             width_ / 2.f - version.getLocalBounds().size.x / 2.f,

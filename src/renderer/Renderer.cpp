@@ -348,7 +348,6 @@ void Renderer::exportVideo(
     }
     long long totalDuration = lastNoteTime + 3000;
     long long startOffset   = notes.empty() ? 0 : notes[0].note.startTime - 2000;
-
     // RenderTexture draws in memory without showing a window
     sf::RenderTexture rt({(unsigned int)width_, (unsigned int)height_});
 
@@ -369,6 +368,20 @@ void Renderer::exportVideo(
             if (frame.timestamp <= currentTime) activeKeys = frame.keys;
             else break;
         }
+        // ADD THIS:
+    static bool firstKeyPrinted = false;
+    if (!firstKeyPrinted && activeKeys != 0) {
+        firstKeyPrinted = true;
+    }
+    static bool firstNotePrinted = false;
+    if (!firstNotePrinted) {
+        for (const auto& pn : notes) {
+            if (scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_)) {
+                firstNotePrinted = true;
+                break;
+            }
+        }
+    }
 
         // draw to offscreen texture
         rt.clear(COL_BACKGROUND);

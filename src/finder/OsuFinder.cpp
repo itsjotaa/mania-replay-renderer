@@ -102,8 +102,6 @@ BeatmapFiles findBeatmap(const std::string& beatmapMd5) {
         return result;
     }
 
-    std::cout << "Searching for beatmap with MD5: " << beatmapMd5 << "\n";
-
     // search all files in the lazer file store
     // lazer stores files as: files/XX/XXYY.../fullhash
     // we check each file to see if it's a .osu and if its MD5 matches
@@ -116,6 +114,8 @@ BeatmapFiles findBeatmap(const std::string& beatmapMd5) {
         auto ext = entry.path().extension().string();
         if (!ext.empty() && ext != ".osu") continue;
 
+        if (!isOsuFile(entry.path())) continue;
+
         // quick check: is it a .osu file?
         if (!isOsuFile(entry.path())) continue;
 
@@ -125,21 +125,17 @@ BeatmapFiles findBeatmap(const std::string& beatmapMd5) {
 
         // found the .osu file
         result.osuPath = entry.path().string();
-        std::cout << "Found beatmap: " << result.osuPath << "\n";
 
         // now find the audio file in the same directory
         // in lazer, audio files are in the same folder level
         // we search the parent directories for an audio file
         fs::path searchDir = entry.path().parent_path().parent_path();
-        std::cout << "Searching audio in: " << searchDir << "\n";
         for (const auto& audioEntry : fs::recursive_directory_iterator(searchDir)) {
             if (!audioEntry.is_regular_file()) continue;
-            std::cout << "Checking" << audioEntry.path() << "\n"; 
             auto audioExt = audioEntry.path().extension().string();
             if (!audioExt.empty() && audioExt != ".mp3" && audioExt != ".ogg") continue;
             if (isAudioFile(audioEntry.path())) {
                 result.audioPath = audioEntry.path().string();
-                std::cout << "Found audio: " << result.audioPath << "\n";
                 break;
             }
         }

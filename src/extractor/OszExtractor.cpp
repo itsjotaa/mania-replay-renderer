@@ -51,7 +51,6 @@ OszContents extractOsz(const std::string& oszPath, const std::string& beatmapMd5
     fs::create_directories(tmpDir);
 
     int fileCount = mz_zip_reader_get_num_files(&zip);
-    std::cout << "Found " << fileCount << " files in .osz\n";
 
     for (int i = 0; i < fileCount; i++) {
         // get file info
@@ -86,36 +85,29 @@ OszContents extractOsz(const std::string& oszPath, const std::string& beatmapMd5
             continue;
         }
 
-        std::cout << "Extracted: " << filename << "\n";
-
         if (isOsu) {
-            std::cout << "Found .osu: " << filename << "\n";
             // check if this .osu matches the replay MD5
             if (!beatmapMd5.empty()) {
                 std::string cmd = "md5sum \"" + outPath.string() + "\" 2>/dev/null";
                 FILE* pipe = popen(cmd.c_str(), "r");
                 char hash[64] = {};
                 if (pipe) { fread(hash, 1, 32, pipe); pclose(pipe); }
-                std::cout << "Calculated MD5: '" << std::string(hash, 32) << "'\n";
-                std::cout << "Expected MD5:   '" << beatmapMd5 << "'\n";
                 if (std::string(hash, 32) == beatmapMd5) {
                     result.osuPath = outPath.string();
-                    std::cout << "Matched .osu: " << filename << "\n";
                 }
             } else if (result.osuPath.empty()) {
                 result.osuPath = outPath.string();
             }
         }
-        if (isAudio && result.audioPath.empty()) {
+        if (isAudio) {
             auto ext = outPath.extension().string();
-            // prefer mp3/ogg over wav (wav files usually hitsounds)
-            if (ext == ".mp3" || ext == ".ogg") {
-                result.audioPath = outPath.string(); 
-            }
-        }
-        // fallback: if no mp3/ogg found, use wav
-        if (isAudio && result.audioPath.empty()) {
-            result.audioPath = outPath.string();
+            // always prefer mp3/ogg over wav
+             // wav files in .osz are usually hitsounds, not the main audio
+             if (ext == ".mp3" || ext == ".ogg") {
+                 result.audioPath = outPath.string(); // overwrite even if already set
+             } else if (result.audioPath.empty()) {
+                  result.audioPath = outPath.string(); // only use wav as fallback
+             }
         }
     }
 

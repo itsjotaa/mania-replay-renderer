@@ -1,6 +1,7 @@
 #include "FFmpegPipe.hpp"
 #include <stdexcept>
 #include <cstdio> 
+#include <iostream>
 
 // Windows compatibility 
 #ifdef _WIN32
@@ -21,13 +22,20 @@ FFmpegPipe::FFmpegPipe(
     std::string audioMap   = "";
 
     if (!audioPath.empty()) {
-        // -ss sets the audio start offset in seconds
-        // if the video starts before, skip that amount of time 
-        double offsetSec = audioOffsetMs / 1000.0;
-        audioInput = "-ss " + std::to_string(offsetSec) + " -i " + audioPath + " ";
-        audioMap   = "-map 0:v -map 1:a -c:a aac ";
-    }
-
+        if (audioOffsetMs > 0) { 
+            //audio starts later than video: seek into audio file
+            double offsetSec = audioOffsetMs / 1000.0; 
+            audioInput = "-ss " + std::to_string(offsetSec) + " -i " + audioPath + " "; 
+        } else if (audioOffsetMs < 0) { 
+            // video starts before audio: delay the audio
+            long long delayMS = (long long)(-audioOffsetMs); 
+            audioInput = "-i " + audioPath + " "; 
+            audioMap = "-map 0:v -map 1:a -af 'adelay=" + std::to_string(delayMS) + "|" + std::to_string(delayMS) + "' -c:a aac ";
+        } else {
+            audioInput = "-i " + audioPath + " "; 
+            audioMap = "-map 0:v -map 1:a -c:a aac "; 
+            }
+        }
     // build the ffmpeg command
     // -f rawvideo        → input is raw video without compression
     // -pixel_format rgba → each pixel are 4 bytes: R, G, B, A 
@@ -56,6 +64,7 @@ FFmpegPipe::FFmpegPipe(
         throw std::runtime_error("could not open ffmpeg pipe");
     }
 }
+
 
 FFmpegPipe::~FFmpegPipe() {
     if (pipe_) {

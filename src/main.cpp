@@ -18,10 +18,6 @@ int main() {
 
         UI ui(820, 600);
         bool doExport = ui.run(osrPath, osuPath, audioPath, w, h, fps, scroll);
-        std::cout << "osrPath: " << osrPath << "\n";
-        std::cout << "osuPath: " << osuPath << "\n";
-        std::cout << "audioPath: " << audioPath << "\n";
-
         if (osrPath.empty()) {
             break;
         }
@@ -35,14 +31,12 @@ int main() {
             auto extracted = extractOsz(osuPath, ""); // empty MD5 = just get audio
             if (extracted.success || !extracted.audioPath.empty()) {
                 audioPath = extracted.audioPath;
-                std::cout << "Audio extracted: " << audioPath << "\n";
             }
             osuPath = ""; // clear so OsuFinder can find the correct .osu
         }
-
+        
         // auto-detect the correct .osu using OsuFinder
         if (osuPath.empty()) {
-            std::cout << "Auto-detecting beatmap...\n";
             auto found = findBeatmap(replay.beatmapHash);
             if (found.found) {
                 osuPath = found.osuPath;
@@ -57,7 +51,9 @@ int main() {
         auto notes   = processReplay(beatmap, replay);
         ScrollCalculator scrollCalc(beatmap.timingPoints, scroll);
         Renderer renderer(w, h);
-
+        std::cout << "Notes in beatmap: " << beatmap.notes.size() << "\n";
+        std::cout << "Frames in replay: " << replay.frames.size() << "\n";
+        std::cout << "Key count: " << beatmap.keyCount << "\n";
         if (doExport) {
             renderer.exportVideo(notes, scrollCalc, replay, beatmap, "output.mp4", audioPath, fps);
             break;
@@ -65,9 +61,6 @@ int main() {
             renderer.preview(notes, scrollCalc, replay, beatmap);
         }
     }
-
-    std::cout << "Using osu: " << osuPath << "\n";
-    std::cout << "Using audio: " << audioPath << "\n";
 
     return 0;
 }

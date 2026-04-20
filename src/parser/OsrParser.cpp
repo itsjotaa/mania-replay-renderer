@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <sstream> 
 #include <lzma.h>
+#include <iostream>
 
 // helper: read a string with osu! special format 
 static std::string readOsuString(FILE* f) {
@@ -79,12 +80,15 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
         int keys        = std::stoi(parts[1]); 
 
         // negatives deltas are metadata frames. skip them
-        if (delta < 0) continue; 
+        if (delta < 0) {
+            currentTime += delta;
+            continue;
+        }
 
         currentTime += delta; 
         frames.push_back({currentTime, keys});
     }
-
+    
     return frames; 
 }
 

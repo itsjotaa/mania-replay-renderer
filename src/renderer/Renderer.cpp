@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include "encoder/FFmpegPipe.hpp"
+#include "skinmanager/SkinManager.hpp"
 
 // theme colours
 static const sf::Color COL_BACKGROUND  = sf::Color(20, 20, 30);
@@ -41,6 +42,23 @@ sf::Color Renderer::colorForJudgement(Judgement j) const {
         default:              return sf::Color::White;
     }
 }
+void Renderer::setSkin(SkinManager& skin) {
+    skin_ = &skin; 
+}
+
+static void drawScaledSprite(sf::RenderTarget& target, 
+                              const sf::Texture& tex, 
+                              float x, float y, float destWidth, 
+                              bool anchorBottom = false) {
+    sf::Sprite sprite(tex); 
+    auto texSize = tex.getSize(); 
+    float scale = destWidth / (float)texSize.x;
+    float height = texSize.y * scale; 
+    sprite.setScale({scale, scale});
+    sprite.setPosition({x, anchorBottom ? y - height : y});
+    target.draw(sprite); 
+                              }
+
 
 // calculates the X center of a column
 // the 4 columns are centered on screen
@@ -86,88 +104,98 @@ void Renderer::drawColumns() {
 void Renderer::drawNotes(
     const std::vector<ProcessedNote>& notes,
     const ScrollCalculator& scroll,
-    long long currentTime
+    long long currentTime, 
+    sf::RenderTarget& target
 ) {
     int totalWidth = colWidth_ * 4;
     int offsetX    = (width_ - totalWidth) / 2;
-    int noteHeight = 30;  // note height in pixels
-    int noteMargin = 4;   // gap between column edge and note
+    int noteMargin = 4;
 
     for (const auto& pn : notes) {
-        // check if the note is visible in this frame
-        if (!scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_)) {
+        if (!scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_))
             continue;
-        }
 
-        float y = scroll.getNoteY(pn.note.startTime, currentTime, hitY_);
-
-        // if already hit or missed, skip drawing
-        bool alreadyHit = (pn.hitTime != -1 && pn.hitTime <= currentTime);
+        bool alreadyHit    = (pn.hitTime != -1 && pn.hitTime <= currentTime);
         bool alreadyMissed = (pn.judgement == Judgement::MISS &&
                               currentTime > pn.note.startTime + 161);
+        if (alreadyHit || alreadyMissed) continue;
 
-        if (alreadyHit || alreadyMissed) {
-            continue;
-        }
+        int   col = pn.note.column;
+        float x   = offsetX + col * colWidth_ + noteMargin;
+        float w   = colWidth_ - noteMargin * 2;
+        float y   = scroll.getNoteY(pn.note.startTime, currentTime, hitY_);
 
-        // base color by column (matches default osu!mania skin)
-        // columns 0 and 3 -> blue, columns 1 and 2 -> white
-        sf::Color color = (pn.note.column == 0 || pn.note.column == 3)
-                ? COL_NOTE_1
-                : COL_NOTE_2;
+        if (!pn.note.isHold) {
+            // normal note: anchor bottom edge to the note's Y position
+            drawScaledSprite(target, skin_->getNoteTexture(col),
+                             x, y, w, /*anchorBottom=*/true);
+        } else {
+            // --- long note: tail (top) → body (stretch) → head (bottom) ---
+            // drawing order matters: body first so head/tail render on top
 
-        // calculate note X position
-        float x = offsetX + pn.note.column * colWidth_ + noteMargin;
-        float w = colWidth_ - noteMargin * 2;
-
-        // draw note body
-        sf::RectangleShape noteRect({w, (float)noteHeight});
-        noteRect.setPosition({x, y - noteHeight});
-        noteRect.setFillColor(color);
-
-        // lighter border for depth effect
-        noteRect.setOutlineThickness(2);
-        noteRect.setOutlineColor(sf::Color(255, 255, 255, 80));
-        window_.draw(noteRect);
-
-        // if hold note, draw body up to endTime
-        if (pn.note.isHold) {
             float endY = scroll.getNoteY(pn.note.endTime, currentTime, hitY_);
-            float holdHeight = y - endY;
-            if (holdHeight > 0) {
-                sf::RectangleShape holdBody({w * 0.6f, holdHeight});
-                holdBody.setPosition({x + w * 0.2f, endY});
-                holdBody.setFillColor(sf::Color(color.r, color.g, color.b, 120));
-                window_.draw(holdBody);
+
+            // measure head and tail heights so body fills the gap between them
+            auto headSize = skin_->getLNHeadTexture(col).getSize();
+            auto tailSize = skin_->getLNTailTexture(col).getSize();
+            float headScale  = w / (float)headSize.x;
+            float tailScale  = w / (float)tailSize.x;
+            float headHeight = headSize.y * headScale;
+            float tailHeight = tailSize.y * tailScale;
+
+            float bodyTop    = endY + tailHeight;   // bottom edge of tail
+            float bodyBottom = y   - headHeight;    // top edge of head
+            float bodyHeight = bodyBottom - bodyTop;
+
+            // body: stretched vertically to fill the gap
+            if (bodyHeight > 0) {
+                sf::Sprite body(skin_->getLNBodyTexture(col));
+                auto bodySize = skin_->getLNBodyTexture(col).getSize();
+                float scaleX  = w / (float)bodySize.x;
+                float scaleY  = bodyHeight / (float)bodySize.y;
+                body.setScale({scaleX, scaleY});
+                body.setPosition({x, bodyTop});
+                target.draw(body);
             }
+
+            // tail: flipped vertically, reuses head texture
+            {
+                sf::Sprite tail(skin_->getLNTailTexture(col));
+                float scaleX = w / (float)tailSize.x;
+                tail.setScale({scaleX, -scaleX});
+                tail.setPosition({x, endY + tailHeight});
+                target.draw(tail);
+            }
+            // head: at the bottom of the LN (startTime position), anchor bottom
+            drawScaledSprite(target, skin_->getLNHeadTexture(col),
+                             x, y, w, /*anchorBottom=*/true);
         }
     }
 }
 
-void Renderer::drawKeys(int activeKeys) {
+void Renderer::drawKeys(int activeKeys, sf::RenderTarget& target) {
     int totalWidth = colWidth_ * 4;
     int offsetX    = (width_ - totalWidth) / 2;
-    int keyHeight  = 60;
     int keyMargin  = 4;
 
     for (int col = 0; col < 4; col++) {
-        bool active = ((activeKeys >> col) & 1) != 0;
+        bool pressed = ((activeKeys >> col) & 1) != 0;
 
         float x = offsetX + col * colWidth_ + keyMargin;
-        float y = hitY_ + 3;  // just below the judgement line
+        float y = hitY_ + 3;
         float w = colWidth_ - keyMargin * 2;
+        float h = height_ - y;
 
-        sf::RectangleShape key({w, (float)keyHeight});
+        const sf::Texture& tex = skin_->getKeyTexture(col, pressed);
+        auto texSize = tex.getSize();
+
+        sf::Sprite key(tex);
+        key.setScale({w / (float)texSize.x, h / (float)texSize.y});
         key.setPosition({x, y});
+        target.draw(key);
 
-        if (active) {
-            key.setFillColor(COL_KEY_ACTIVE);
-        } else {
-            sf::Color base = (col == 0 || col == 3) ? COL_NOTE_1 : COL_NOTE_2;
-            key.setFillColor(sf::Color(base.r, base.g, base.b, 80));
-        }
-
-        window_.draw(key);
+        drawScaledSprite(target, skin_->getKeyTexture(col, pressed),
+                         x, y, w, /*anchorBottom=*/false);
     }
 }
 
@@ -316,8 +344,8 @@ void Renderer::preview(
         // draw everything
         drawBackground();
         drawColumns();
-        drawNotes(notes, scroll, currentTime);
-        drawKeys(activeKeys);
+        drawKeys(activeKeys, window_);
+        drawNotes(notes, scroll, currentTime, window_);
         drawHUD(notes, currentTime, window_);
 
         window_.draw(backBtn);
@@ -368,23 +396,8 @@ void Renderer::exportVideo(
             if (frame.timestamp <= currentTime) activeKeys = frame.keys;
             else break;
         }
-        // ADD THIS:
-    static bool firstKeyPrinted = false;
-    if (!firstKeyPrinted && activeKeys != 0) {
-        firstKeyPrinted = true;
-    }
-    static bool firstNotePrinted = false;
-    if (!firstNotePrinted) {
-        for (const auto& pn : notes) {
-            if (scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_)) {
-                firstNotePrinted = true;
-                break;
-            }
-        }
-    }
 
-        // draw to offscreen texture
-        rt.clear(COL_BACKGROUND);
+     rt.clear(COL_BACKGROUND);
 
         int totalWidth = colWidth_ * 4;
         int offsetX    = (width_ - totalWidth) / 2;
@@ -409,62 +422,11 @@ void Renderer::exportVideo(
         hitLine.setFillColor(COL_HIT_LINE);
         rt.draw(hitLine);
 
-        // notes
-        int noteHeight = 30;
-        int noteMargin = 4;
-        for (const auto& pn : notes) {
-            if (!scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_)) continue;
-
-            bool alreadyHit    = (pn.hitTime != -1 && pn.hitTime <= currentTime);
-            bool alreadyMissed = (pn.judgement == Judgement::MISS &&
-                                   currentTime > pn.note.startTime + 161);
-            if (alreadyHit || alreadyMissed) continue;
-
-            sf::Color color = (pn.note.column == 0 || pn.note.column == 3)
-                              ? COL_NOTE_1 : COL_NOTE_2;
-
-            float y = scroll.getNoteY(pn.note.startTime, currentTime, hitY_);
-            float x = offsetX + pn.note.column * colWidth_ + noteMargin;
-            float w = colWidth_ - noteMargin * 2;
-
-            sf::RectangleShape noteRect({w, (float)noteHeight});
-            noteRect.setPosition({x, y - noteHeight});
-            noteRect.setFillColor(color);
-            noteRect.setOutlineThickness(2);
-            noteRect.setOutlineColor(sf::Color(255, 255, 255, 80));
-            rt.draw(noteRect);
-
-            if (pn.note.isHold) {
-                float endY = scroll.getNoteY(pn.note.endTime, currentTime, hitY_);
-                float holdHeight = y - endY;
-                if (holdHeight > 0) {
-                    sf::RectangleShape holdBody({w * 0.6f, holdHeight});
-                    holdBody.setPosition({x + w * 0.2f, endY});
-                    holdBody.setFillColor(sf::Color(color.r, color.g, color.b, 120));
-                    rt.draw(holdBody);
-                }
-            }
-        }
-
-        // keys
-        int keyHeight = 60;
-        int keyMargin = 4;
-        for (int col = 0; col < 4; col++) {
-            bool active = ((activeKeys >> col) & 1) != 0;
-            float x = offsetX + col * colWidth_ + keyMargin;
-            float w = colWidth_ - keyMargin * 2;
-            sf::RectangleShape key({w, (float)keyHeight});
-            key.setPosition({x, (float)hitY_ + 3});
-            if (active) {
-                key.setFillColor(COL_KEY_ACTIVE);
-            } else {
-                sf::Color base = (col == 0 || col == 3) ? COL_NOTE_1 : COL_NOTE_2;
-                key.setFillColor(sf::Color(base.r, base.g, base.b, 80));
-            }
-            rt.draw(key);
-        }
-
+        // notes, keys, HUD — now unified with preview()
+        drawKeys(activeKeys, rt);
+        drawNotes(notes, scroll, currentTime, rt);
         drawHUD(notes, currentTime, rt);
+
         rt.display();
 
         // capture frame and send to ffmpeg

@@ -3,3 +3,4 @@ build/
 *.osu
 assets/audio.mp3
 output.mp4
+debug.txt

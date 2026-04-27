@@ -124,7 +124,7 @@ void UI::drawFileRow(sf::RenderWindow& window, const std::string& label,
     btn.draw(window);
 }
 
-bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
+bool UI::run(std::string& osrPath, std::string& osuPath, std::string& oskPath,
              int& outWidth, int& outHeight, int& outFps, double& outScroll) {
 
     sf::RenderWindow window(
@@ -139,7 +139,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
     // file buttons
     Button btnOsr   (font_, "Browse", 700, 160, 100, 44);
     Button btnOsu   (font_, "Browse", 700, 230, 100, 44);
-    Button btnAudio (font_, "Browse", 700, 300, 100, 44);
+    Button btnSkin (font_, "Browse", 700, 300, 100, 44);
     Button btnExport (font_, "Export",  460, 530, 140, 48);
     Button btnPreview(font_, "Preview", 310, 530, 140, 48);
 
@@ -163,7 +163,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
         // update button hover
         btnOsr.setHovered(btnOsr.contains(mouse));
         btnOsu.setHovered(btnOsu.contains(mouse));
-        btnAudio.setHovered(btnAudio.contains(mouse));
+        btnSkin.setHovered(btnSkin.contains(mouse));
         btnExport.setHovered(btnExport.contains(mouse));
         btnPreview.setHovered(btnPreview.contains(mouse));
 
@@ -194,10 +194,10 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
                     if (NFD::OpenDialog(outPath, filters, 1) == NFD_OKAY)
                         osuPath = outPath.get();
                 }
-                if (btnAudio.contains(pos)) {
-                    nfdfilteritem_t filters[] = {{"Audio", "mp3,ogg,wav"}};
+                if (btnSkin.contains(pos)) {
+                    nfdfilteritem_t filters[] = {{"osu! Skin", "osk"}};
                     if (NFD::OpenDialog(outPath, filters, 1) == NFD_OKAY)
-                        audioPath = outPath.get();
+                        oskPath = outPath.get();
                 }
                 if (btnPreview.contains(pos)) {
                     if (!osrPath.empty()) {
@@ -242,7 +242,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
         window.draw(title);
 
         // version
-        sf::Text version(font_, "v0.4", 16);
+        sf::Text version(font_, "v0.5", 16);
         version.setFillColor(COL_DIM);
         version.setPosition({
             width_ / 2.f - version.getLocalBounds().size.x / 2.f,
@@ -252,8 +252,8 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& audioPath,
 
         // file rows
         drawFileRow(window, "Replay (.osr)",  osrPath,   160, btnOsr);
-        drawFileRow(window, "Beatmap", osuPath,   230, btnOsu);
-        drawFileRow(window, "Audio",          audioPath, 300, btnAudio);
+        drawFileRow(window, "(.osz)", osuPath,   230, btnOsu);
+        drawFileRow(window, "Skin (.osk)", oskPath, 300, btnSkin); 
 
         // separator
         sf::RectangleShape sep({(float)width_ - 120.f, 1.f});

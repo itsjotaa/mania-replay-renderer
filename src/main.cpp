@@ -5,37 +5,38 @@
 #include "engine/ReplayProcessor.hpp"
 #include "engine/ScrollCalculator.hpp"
 #include "renderer/Renderer.hpp"
+#include "skinmanager/SkinManager.hpp"
 #include "ui/UI.hpp"
 #include "finder/OsuFinder.hpp"
 #include "extractor/OszExtractor.hpp"
 
 int main() {
-    std::string osrPath, osuPath, audioPath;
+    std::string osrPath, osuPath, oskPath;
 
     while (true) {
         int w = 1280, h = 720, fps = 60;
         double scroll = 10.0;
 
         UI ui(820, 600);
-        bool doExport = ui.run(osrPath, osuPath, audioPath, w, h, fps, scroll);
+        bool doExport = ui.run(osrPath, osuPath, oskPath, w, h, fps, scroll);
         if (osrPath.empty()) {
             break;
         }
 
         // parse replay first to get the beatmap MD5
-         auto replay  = parseOsr(osrPath);
+        auto replay = parseOsr(osrPath);
 
-        // if user selected a .osz, extract the audio from it
+        // .osz handling: extract audio, then let OsuFinder locate the correct .osu
+        std::string audioPath;
         if (osuPath.size() > 4 && osuPath.substr(osuPath.size() - 4) == ".osz") {
             std::cout << "Extracting audio from .osz...\n";
-            auto extracted = extractOsz(osuPath, ""); // empty MD5 = just get audio
-            if (extracted.success || !extracted.audioPath.empty()) {
+            auto extracted = extractOsz(osuPath, "");
+            if (!extracted.audioPath.empty())
                 audioPath = extracted.audioPath;
-            }
-            osuPath = ""; // clear so OsuFinder can find the correct .osu
+            osuPath = ""; // clear so OsuFinder picks the correct .osu below
         }
-        
-        // auto-detect the correct .osu using OsuFinder
+
+        // auto-detect the correct .osu via OsuFinder
         if (osuPath.empty()) {
             auto found = findBeatmap(replay.beatmapHash);
             if (found.found) {
@@ -47,15 +48,25 @@ int main() {
                 continue;
             }
         }
+
         auto beatmap = parseOsu(osuPath);
         auto notes   = processReplay(beatmap, replay);
         ScrollCalculator scrollCalc(beatmap.timingPoints, scroll);
-        Renderer renderer(w, h);
+
         std::cout << "Notes in beatmap: " << beatmap.notes.size() << "\n";
         std::cout << "Frames in replay: " << replay.frames.size() << "\n";
         std::cout << "Key count: " << beatmap.keyCount << "\n";
+
+        // load skin from the selected .osk — exits if any asset is missing
+        SkinManager skin;
+        skin.load(oskPath);
+
+        Renderer renderer(w, h);
+        renderer.setSkin(skin);
+
         if (doExport) {
-            renderer.exportVideo(notes, scrollCalc, replay, beatmap, "output.mp4", audioPath, fps);
+            renderer.exportVideo(notes, scrollCalc, replay, beatmap,
+                                 "output.mp4", audioPath, fps);
             break;
         } else {
             renderer.preview(notes, scrollCalc, replay, beatmap);

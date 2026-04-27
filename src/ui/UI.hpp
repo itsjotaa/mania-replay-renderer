@@ -36,7 +36,7 @@ public:
 
     // shows the window and return true if the user confirmed
     // fills the paths with the selected files 
-    bool run(std::string& osrPath, std::string& osuPath, std::string& audioPath, 
+    bool run(std::string& osrPath, std::string& osuPath, std::string& oskPath, 
              int& outWidth, int& outHeight, int& outFps, double& outScroll);
 
 private:

@@ -3,11 +3,14 @@
 #include "parser/OsuParser.hpp"
 #include "engine/ReplayProcessor.hpp"
 #include "engine/ScrollCalculator.hpp"
+#include "skinmanager/SkinManager.hpp"
 #include <SFML/Graphics.hpp>
 
 class Renderer {
 public:
     Renderer(int width, int height);
+
+    void setSkin(SkinManager& skin); 
 
     // reproduces the replay in a real time window
     void preview(
@@ -27,26 +30,31 @@ public:
     int fps = 60
 );
 
-private:
-    // draw functions
-    void drawBackground();
-    void drawColumns();
+private: 
+    void drawBackground(); 
+    void drawColumns(); 
+
+    // target parameter lets both preview() and exportVideo() share same
+    // draw calls, windows_ for preview, RenderTexture for export
+
     void drawNotes(const std::vector<ProcessedNote>& notes,
-                   const ScrollCalculator& scroll,
-                   long long currentTime);
-    void drawKeys(int activeKeys);
+                   const ScrollCalculator& scroll, 
+                   long long currentTime, 
+                   sf::RenderTarget& target); 
 
-    sf::RenderWindow window_;
-    int width_;
-    int height_;
-    int hitY_;       // Y coordinate of the judgement line
-    int colWidth_;   // width of each column in pixels
+    void drawKeys(int activeKeys, sf::RenderTarget& target); 
 
-    // colours for each judgement 
-    sf::Color colorForJudgement(Judgement j) const;
+    void drawHUD(const std::vector<ProcessedNote>& notes,
+                 long long currentTime, 
+                 sf::RenderTarget& target); 
+    
+    sf::Color colorForJudgement(Judgement j) const; 
 
-       void drawHUD(const std::vector<ProcessedNote>& notes, long long currentTime, sf::RenderTarget& target);
+    sf::RenderWindow window_; 
+    int width_, height_, hitY_, colWidth_; 
 
-    sf::Font font_;
-    bool fontLoaded_ = false;
-};
+    sf::Font font_; 
+    bool fontLoaded_ = false; 
+
+    SkinManager* skin_ = nullptr; // non-owning pointer, set via setSkin()
+}; 

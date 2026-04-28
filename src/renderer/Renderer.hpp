@@ -32,7 +32,7 @@ public:
 
 private: 
     void drawBackground(); 
-    void drawColumns(); 
+    void drawColumns(sf::RenderTarget& target); 
 
     // target parameter lets both preview() and exportVideo() share same
     // draw calls, windows_ for preview, RenderTexture for export
@@ -52,6 +52,7 @@ private:
 
     sf::RenderWindow window_; 
     int width_, height_, hitY_, colWidth_; 
+    int stageOffsetX_ = 0;
 
     sf::Font font_; 
     bool fontLoaded_ = false; 

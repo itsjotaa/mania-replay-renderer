@@ -42,8 +42,20 @@ sf::Color Renderer::colorForJudgement(Judgement j) const {
         default:              return sf::Color::White;
     }
 }
+
 void Renderer::setSkin(SkinManager& skin) {
-    skin_ = &skin; 
+    skin_ = &skin;
+
+    const auto& cfg = skin.getConfig();
+
+   // scale column width proportionally to screen height
+    // osu! renders at ~600px base height
+    float scaleY  = (float)height_ / 480.0f;
+    hitY_         = (int)(cfg.hitPosition * scaleY);
+    colWidth_     = (int)(cfg.columnWidths[0] * scaleY);
+
+    int totalRealWidth = colWidth_ * 4;
+    stageOffsetX_ = (width_ - totalRealWidth) / 2;
 }
 
 static void drawScaledSprite(sf::RenderTarget& target, 
@@ -76,29 +88,58 @@ void Renderer::drawBackground() {
     window_.clear(COL_BACKGROUND);
 }
 
-void Renderer::drawColumns() {
+void Renderer::drawColumns(sf::RenderTarget& target) {
     int totalWidth = colWidth_ * 4;
-    int offsetX    = (width_ - totalWidth) / 2;
+    int offsetX    = stageOffsetX_;
+    int halfWidth  = totalWidth / 2;
 
-    // draw column background (slightly lighter than the main background)
-    sf::RectangleShape colBg({(float)totalWidth, (float)height_});
-    colBg.setPosition({(float)offsetX, 0});
-    colBg.setFillColor(sf::Color(30, 30, 45));
-    window_.draw(colBg);
+    // stage-left covers columns 0 and 1, up to the judgement line
+    {
+        sf::Sprite left(skin_->getStageLeft());
+        auto size = skin_->getStageLeft().getSize();
+        left.setScale({(float)halfWidth / size.x, (float)hitY_ / size.y});
+        left.setPosition({(float)offsetX, 0});
+        target.draw(left);
+    }
 
-    // draw divider lines between columns
+    // stage-right covers columns 2 and 3, up to the judgement line
+    {
+        sf::Sprite right(skin_->getStageRight());
+        auto size = skin_->getStageRight().getSize();
+        right.setScale({(float)halfWidth / size.x, (float)hitY_ / size.y});
+        right.setPosition({(float)(offsetX + halfWidth), 0});
+        target.draw(right);
+    }
+
+    // stage-hint replaces the hardcoded judgement line
+    {
+        sf::Sprite hint(skin_->getStageHint());
+        auto size = skin_->getStageHint().getSize();
+        float hintH = 16.f; // thin strip, adjust if needed
+        hint.setScale({(float)totalWidth / size.x, hintH / size.y});
+        hint.setPosition({(float)offsetX, (float)hitY_ - hintH / 2});
+        target.draw(hint);
+    }
+
+// stage-bottom: thin strip at the very bottom of the screen
+  //  {
+  //      sf::Sprite bottom(skin_->getStageBottom());
+   //     auto size = skin_->getStageBottom().getSize();
+   //     float scaleX = (float)totalWidth / size.x;
+   //     float scaleY = scaleX; // preserve aspect ratio
+   //     float bottomH = size.y * scaleY;
+   //     bottom.setScale({scaleX, scaleY});
+   //     bottom.setPosition({(float)stageOffsetX_, (float)height_ - bottomH});
+  //      target.draw(bottom);
+  //  }
+
+    // column dividers on top of the stage background
     for (int i = 0; i <= 4; i++) {
         sf::RectangleShape line({2.f, (float)height_});
         line.setPosition({(float)(offsetX + i * colWidth_), 0});
         line.setFillColor(COL_COLUMN_LINE);
-        window_.draw(line);
+        target.draw(line);
     }
-
-    // draw the judgement line (where notes are judged)
-    sf::RectangleShape hitLine({(float)totalWidth, 3.f});
-    hitLine.setPosition({(float)offsetX, (float)hitY_});
-    hitLine.setFillColor(COL_HIT_LINE);
-    window_.draw(hitLine);
 }
 
 void Renderer::drawNotes(
@@ -108,7 +149,7 @@ void Renderer::drawNotes(
     sf::RenderTarget& target
 ) {
     int totalWidth = colWidth_ * 4;
-    int offsetX    = (width_ - totalWidth) / 2;
+    int offsetX    = stageOffsetX_;
     int noteMargin = 4;
 
     for (const auto& pn : notes) {
@@ -175,7 +216,7 @@ void Renderer::drawNotes(
 
 void Renderer::drawKeys(int activeKeys, sf::RenderTarget& target) {
     int totalWidth = colWidth_ * 4;
-    int offsetX    = (width_ - totalWidth) / 2;
+    int offsetX    = stageOffsetX_;
     int keyMargin  = 4;
 
     for (int col = 0; col < 4; col++) {
@@ -184,18 +225,14 @@ void Renderer::drawKeys(int activeKeys, sf::RenderTarget& target) {
         float x = offsetX + col * colWidth_ + keyMargin;
         float y = hitY_ + 3;
         float w = colWidth_ - keyMargin * 2;
-        float h = height_ - y;
+        float h = height_ - y;  // stretch to bottom of screen
 
         const sf::Texture& tex = skin_->getKeyTexture(col, pressed);
         auto texSize = tex.getSize();
-
         sf::Sprite key(tex);
         key.setScale({w / (float)texSize.x, h / (float)texSize.y});
         key.setPosition({x, y});
         target.draw(key);
-
-        drawScaledSprite(target, skin_->getKeyTexture(col, pressed),
-                         x, y, w, /*anchorBottom=*/false);
     }
 }
 
@@ -237,7 +274,7 @@ void Renderer::drawHUD(
         : 100.f;
 
     int totalWidth = colWidth_ * 4;
-    int offsetX    = (width_ - totalWidth) / 2;
+    int offsetX    = stageOffsetX_;
 
     // score - top left
     sf::Text scoreText(font_, std::to_string(score), 28);
@@ -343,7 +380,7 @@ void Renderer::preview(
 
         // draw everything
         drawBackground();
-        drawColumns();
+        drawColumns(window_);
         drawKeys(activeKeys, window_);
         drawNotes(notes, scroll, currentTime, window_);
         drawHUD(notes, currentTime, window_);
@@ -397,32 +434,8 @@ void Renderer::exportVideo(
             else break;
         }
 
-     rt.clear(COL_BACKGROUND);
-
-        int totalWidth = colWidth_ * 4;
-        int offsetX    = (width_ - totalWidth) / 2;
-
-        // column background
-        sf::RectangleShape colBg({(float)totalWidth, (float)height_});
-        colBg.setPosition({(float)offsetX, 0});
-        colBg.setFillColor(sf::Color(30, 30, 45));
-        rt.draw(colBg);
-
-        // column dividers
-        for (int i = 0; i <= 4; i++) {
-            sf::RectangleShape line({2.f, (float)height_});
-            line.setPosition({(float)(offsetX + i * colWidth_), 0});
-            line.setFillColor(COL_COLUMN_LINE);
-            rt.draw(line);
-        }
-
-        // judgement line
-        sf::RectangleShape hitLine({(float)totalWidth, 3.f});
-        hitLine.setPosition({(float)offsetX, (float)hitY_});
-        hitLine.setFillColor(COL_HIT_LINE);
-        rt.draw(hitLine);
-
-        // notes, keys, HUD — now unified with preview()
+        rt.clear(COL_BACKGROUND);
+        drawColumns(rt);
         drawKeys(activeKeys, rt);
         drawNotes(notes, scroll, currentTime, rt);
         drawHUD(notes, currentTime, rt);

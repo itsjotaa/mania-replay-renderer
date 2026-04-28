@@ -51,7 +51,7 @@ int main() {
 
         auto beatmap = parseOsu(osuPath);
         auto notes   = processReplay(beatmap, replay);
-        ScrollCalculator scrollCalc(beatmap.timingPoints, scroll);
+        ScrollCalculator scrollCalc(beatmap.timingPoints, scroll /5.0);
 
         std::cout << "Notes in beatmap: " << beatmap.notes.size() << "\n";
         std::cout << "Frames in replay: " << replay.frames.size() << "\n";

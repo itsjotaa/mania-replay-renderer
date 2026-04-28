@@ -9,22 +9,28 @@
 // Textures are loaded entirely in memory, no temp files written to disk
 // Calls std::exit(1) if any required asset is missing 
 
+// Parsed values from the [Mania] Keys: 4 block in Skin.ini 
+struct ManiaSkinConfig {
+    int columnStart = 136;          // default osu! 4K value
+    int hitPosition = 402;          // default
+    std::array<int, 4> columnWidths = {45, 45, 45, 45};  // default
+    std::array<int, 5> columnLineWidths = {2, 2, 2, 2, 2};
+};
+
 class SkinManager {
-    public: 
-    // Loads all required textures from a .osk file
-    // Expected filenames inside the archive (osu!stable naming convention):
-    //   mania-note1.png  ... mania-note4.png        (normal notes)
-    //   mania-note1H.png ... mania-note4H.png        (LN head)
-    //   mania-note1L.png ... mania-note4L.png        (LN body)
-    //   mania-note1T.png ... mania-note4T.png        (LN tail)
-    //   mania-key1.png   ... mania-key4.png          (key up)
-    //   mania-key1D.png  ... mania-key4D.png         (key down/pressed)
+public: 
     void load(const std::string& oskPath);
 
     const sf::Texture& getNoteTexture(int col) const; 
     const sf::Texture& getLNHeadTexture(int col) const; 
     const sf::Texture& getLNBodyTexture(int col) const; 
     const sf::Texture& getLNTailTexture(int col) const; 
+    const sf::Texture& getStageLeft()   const { return stageLeftTexture_;   }
+    const sf::Texture& getStageRight()  const { return stageRightTexture_;  }
+    const sf::Texture& getStageBottom() const { return stageBottomTexture_; }
+    const sf::Texture& getStageHint()   const { return stageHintTexture_;   }
+
+    const ManiaSkinConfig& getConfig() const { return config_; }
 
     // pressed=true returns the KeyDown texture, pressed=false returns KeyUp
     const sf::Texture& getKeyTexture(int col, bool pressed) const; 
@@ -39,6 +45,7 @@ private:
     // Loads a texture from a raw PNG buffer
     // Exits with an error message if the buffer is empty or the load fails
     static sf::Texture textureFromBuffer(const std::vector<uint8_t>& buf, const std::string& assetName);
+    static ManiaSkinConfig parseSkinIni(const std::string& content);
 
     // osu! skin uses 1-based column indices in filenames:
     // col 0 -> "1", col 1 -> "2", col 2 -> "3", col 3 -> "4"
@@ -50,10 +57,15 @@ private:
     // no tail, use head flipped
     std::array<sf::Texture, 2> keyUpTextures_;
     std::array<sf::Texture, 2> keyDownTextures_;
+    sf::Texture stageLeftTexture_;
+    sf::Texture stageRightTexture_;
+    sf::Texture stageBottomTexture_; 
+    sf::Texture stageHintTexture_;
 
     // 4K uses 2 unique textures mirrored: cols 0,3 -> idx 0 / cols 1,2 -> idx 1
     static int colToIdx(int col) { return ( col == 1 || col == 2) ? 1 : 0; }
 
+    ManiaSkinConfig config_;
     bool loaded_ = false; 
           
 };

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 
 // Searches an open zip archive for a file matching the given filename.
 // The match is case-insensitive and ignores any subfolder prefix in the archive
@@ -72,11 +73,110 @@ sf::Texture SkinManager::textureFromBuffer(const std::vector<uint8_t>& buf,
     return tex;
 }
 
+ManiaSkinConfig SkinManager::parseSkinIni(const std::string& content) {
+    ManiaSkinConfig cfg;
+
+    // find the [Mania] block with Keys: 4
+    // there can be multiple [Mania] blocks for different keycounts
+    std::istringstream stream(content);
+    std::string line;
+
+    bool inManiaBlock = false;
+    bool foundKeys4   = false;
+
+    while (std::getline(stream, line)) {
+        // trim whitespace
+        auto trim = [](std::string s) {
+            size_t start = s.find_first_not_of(" \t\r\n");
+            size_t end   = s.find_last_not_of(" \t\r\n");
+            return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+        };
+        line = trim(line);
+
+        // skip comments
+        if (line.empty() || line[0] == '/' || line[0] == '#') continue;
+
+        // new section
+        if (line == "[Mania]") {
+            // if we already found the 4K block and parsed it, stop
+            if (foundKeys4) break;
+            inManiaBlock = true;
+            continue;
+        }
+
+        // any other section header resets the block
+        if (line[0] == '[') {
+            if (foundKeys4) break;
+            inManiaBlock = false;
+            continue;
+        }
+
+        if (!inManiaBlock) continue;
+
+        // parse key: value
+        auto sep = line.find(':');
+        if (sep == std::string::npos) continue;
+        std::string key = trim(line.substr(0, sep));
+        std::string val = trim(line.substr(sep + 1));
+
+        if (key == "Keys") {
+            if (val == "4") foundKeys4 = true;
+            else { inManiaBlock = false; } // wrong keycount, skip block
+        }
+
+        if (!foundKeys4) continue;
+
+        if (key == "ColumnStart") {
+            cfg.columnStart = std::stoi(val);
+        }
+        else if (key == "HitPosition") {
+            cfg.hitPosition = std::stoi(val);
+        }
+        else if (key == "ColumnWidth") {
+            // parse comma-separated list: "45,45,45,45"
+            std::istringstream vs(val);
+            std::string token;
+            int i = 0;
+            while (std::getline(vs, token, ',') && i < 4) {
+                cfg.columnWidths[i++] = std::stoi(trim(token));
+            }
+        }
+        else if (key == "ColumnLineWidth") {
+            std::istringstream vs(val);
+            std::string token;
+            int i = 0;
+            while (std::getline(vs, token, ',') && i < 5) {
+                cfg.columnLineWidths[i++] = std::stoi(trim(token));
+            }
+        }
+    }
+
+    return cfg;
+}
+
 void SkinManager::load(const std::string& oskPath) {
     mz_zip_archive zip = {};
     if (!mz_zip_reader_init_file(&zip, oskPath.c_str(), 0)) {
         std::cerr << "[SkinManager] Failed to open .osk file: " << oskPath << "\n";
         std::exit(1);
+    }
+
+    // parse Skin.ini for layout config
+    // try "Skin.ini" first (some skins use capital S), then "skin.ini"
+    auto iniBuf = extractFileFromZip(zip, "Skin.ini");
+    if (iniBuf.empty()) iniBuf = extractFileFromZip(zip, "skin.ini");
+
+    if (!iniBuf.empty()) {
+        std::string iniContent(iniBuf.begin(), iniBuf.end());
+        config_ = parseSkinIni(iniContent);
+        std::cout << "[SkinManager] ColumnStart=" << config_.columnStart
+                  << " HitPosition=" << config_.hitPosition
+                  << " ColumnWidths=" << config_.columnWidths[0]
+                  << "," << config_.columnWidths[1]
+                  << "," << config_.columnWidths[2]
+                  << "," << config_.columnWidths[3] << "\n";
+    } else {
+        std::cout << "[SkinManager] Skin.ini not found, using defaults\n";
     }
 
     // load only 2 unique column textures (1 and 2)
@@ -103,6 +203,23 @@ void SkinManager::load(const std::string& oskPath) {
             extractFileFromZip(zip, "mania-key" + c + "D.png"),
             "mania-key" + c + "D.png");
     }
+
+    // stage textures, global, not per column
+    stageLeftTexture_   = textureFromBuffer(
+        extractFileFromZip(zip, "mania-stage-left.png"),
+        "mania-stage-left.png");
+
+    stageRightTexture_  = textureFromBuffer(
+        extractFileFromZip(zip, "mania-stage-right.png"),
+        "mania-stage-right.png");
+
+    stageBottomTexture_ = textureFromBuffer(
+        extractFileFromZip(zip, "mania-stage-bottom.png"),
+        "mania-stage-bottom.png");
+
+    stageHintTexture_   = textureFromBuffer(
+        extractFileFromZip(zip, "mania-stage-hint.png"),
+        "mania-stage-hint.png");
 
     mz_zip_reader_end(&zip);
     loaded_ = true;

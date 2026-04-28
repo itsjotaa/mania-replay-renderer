@@ -61,7 +61,7 @@ float ScrollCalculator::getNoteY(
     // convert distance to pixels
     // scrollSpeed_ controls how many pixels per ms-unit
     // 0.45 is an empirical scale factor for a good visual result
-    float pixels = (float)(distance * scrollSpeed_ * 0.45);
+    float pixels = (float)(distance * scrollSpeed_ * 0.45 * (hitY / 640.0));
 
     // hitY is where notes are judged (bottom area)
     // notes coming in the future are higher up (lower Y value)

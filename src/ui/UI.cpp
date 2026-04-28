@@ -147,7 +147,7 @@ bool UI::run(std::string& osrPath, std::string& osuPath, std::string& oskPath,
     TextInput inputWidth (font_, "1280", 220, 390, 80, 36);
     TextInput inputHeight(font_, "720",  320, 390, 80, 36);
     TextInput inputFps   (font_, "60",   220, 440, 80, 36);
-    TextInput inputScroll(font_, "10",   220, 490, 80, 36);
+    TextInput inputScroll(font_, "25",   220, 490, 80, 36);
 
     // list for focus management
     std::vector<TextInput*> inputs = {&inputWidth, &inputHeight, &inputFps, &inputScroll};

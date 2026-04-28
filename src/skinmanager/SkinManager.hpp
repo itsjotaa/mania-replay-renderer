@@ -34,7 +34,8 @@ public:
 
     // pressed=true returns the KeyDown texture, pressed=false returns KeyUp
     const sf::Texture& getKeyTexture(int col, bool pressed) const; 
-
+    // j: 0=miss, 1=50, 2=100, 3=200, 4=300, 5=320
+    const sf::Texture& getHitTexture(int j) const { return hitTextures_[j]; }
     bool isLoaded() const { return loaded_; }
 
 private:
@@ -61,6 +62,7 @@ private:
     sf::Texture stageRightTexture_;
     sf::Texture stageBottomTexture_; 
     sf::Texture stageHintTexture_;
+    sf::Texture hitTextures_[6]; //0=miss, 50, 100, 200, 300, 320
 
     // 4K uses 2 unique textures mirrored: cols 0,3 -> idx 0 / cols 1,2 -> idx 1
     static int colToIdx(int col) { return ( col == 1 || col == 2) ? 1 : 0; }

@@ -221,6 +221,14 @@ void SkinManager::load(const std::string& oskPath) {
         extractFileFromZip(zip, "mania-stage-hint.png"),
         "mania-stage-hint.png");
 
+    // hit burst textures — order matches Judgement enum
+    hitTextures_[0] = textureFromBuffer(extractFileFromZip(zip, "mania-hit0.png"),   "mania-hit0.png");
+    hitTextures_[1] = textureFromBuffer(extractFileFromZip(zip, "mania-hit50.png"),  "mania-hit50.png");
+    hitTextures_[2] = textureFromBuffer(extractFileFromZip(zip, "mania-hit100.png"), "mania-hit100.png");
+    hitTextures_[3] = textureFromBuffer(extractFileFromZip(zip, "mania-hit200.png"), "mania-hit200.png");
+    hitTextures_[4] = textureFromBuffer(extractFileFromZip(zip, "mania-hit300.png"), "mania-hit300.png");
+    hitTextures_[5] = textureFromBuffer(extractFileFromZip(zip, "mania-hit300g-0.png"), "mania-hit300g-0.png");
+
     mz_zip_reader_end(&zip);
     loaded_ = true;
     std::cout << "[SkinManager] Skin loaded from: " << oskPath << "\n";

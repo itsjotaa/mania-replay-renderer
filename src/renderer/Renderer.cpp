@@ -5,6 +5,7 @@
 #include <thread>
 #include "encoder/FFmpegPipe.hpp"
 #include "skinmanager/SkinManager.hpp"
+#include <algorithm>
 
 // theme colours
 static const sf::Color COL_BACKGROUND  = sf::Color(20, 20, 30);
@@ -236,6 +237,77 @@ void Renderer::drawKeys(int activeKeys, sf::RenderTarget& target) {
     }
 }
 
+void Renderer::updateBursts(const std::vector<ProcessedNote>& notes, long long currentTime) {
+    for (const auto& pn : notes) {
+        // only care about notes that were just hit/missed this frame
+        long long hitTime = (pn.hitTime != -1) ? pn.hitTime
+                          : (pn.judgement == Judgement::MISS ? pn.note.startTime + 161 : -1);
+        if (hitTime == -1) continue;
+
+        // only spawn burst in a small window around the hit time (1 frame = ~16ms)
+        if (hitTime < currentTime - 16 || hitTime > currentTime) continue;
+
+        // avoid duplicate bursts for the same note
+        bool alreadySpawned = false;
+        for (const auto& b : activeBursts_) {
+            if (b.col == pn.note.column && std::abs(b.spawnTime - hitTime) < 32) {
+                alreadySpawned = true;
+                break;
+            }
+        }
+        if (alreadySpawned) continue;
+
+        int j = 0;
+        switch (pn.judgement) {
+            case Judgement::MISS: j = 0; break;
+            case Judgement::J50:  j = 1; break;
+            case Judgement::J100: j = 2; break;
+            case Judgement::J200: j = 3; break;
+            case Judgement::J300: j = 4; break;
+            case Judgement::J320: j = 5; break;
+            default: continue;
+        }
+
+        activeBursts_.push_back({pn.note.column, j, hitTime});
+    }
+
+    // remove expired bursts
+    activeBursts_.erase(
+        std::remove_if(activeBursts_.begin(), activeBursts_.end(),
+            [&](const HitBurst& b) {
+                return currentTime - b.spawnTime > BURST_DURATION;
+            }),
+        activeBursts_.end()
+    );
+}
+
+void Renderer::drawBursts(long long currentTime, sf::RenderTarget& target) {
+    if (activeBursts_.empty()) return;
+
+    // only draw the most recent burst
+    const HitBurst& b = activeBursts_.back();
+
+    const sf::Texture& tex = skin_->getHitTexture(b.judgement);
+    auto texSize = tex.getSize();
+    float targetH = 20.f; 
+    float scale   = targetH / texSize.y; 
+    float scaledW = texSize.x * scale;
+    float scaledH = texSize.y * scale;
+
+    float stageCenterX = stageOffsetX_ + (colWidth_ * 4) / 2.f;
+    float x = stageCenterX - scaledW / 2.f;
+    float y = hitY_ - 150.f;
+
+    float progress = (float)(currentTime - b.spawnTime) / BURST_DURATION;
+    uint8_t alpha  = (uint8_t)((1.0f - progress) * 255);
+
+    sf::Sprite sprite(tex);
+    sprite.setScale({scale, scale});
+    sprite.setPosition({x, y});
+    sprite.setColor(sf::Color(255, 255, 255, alpha));
+    target.draw(sprite);
+}
+
 void Renderer::drawHUD(
     const std::vector<ProcessedNote>& notes,
     long long currentTime,
@@ -307,12 +379,12 @@ void Renderer::drawHUD(
         target.draw(t);
     };
 
-    drawJudge("320", j320, sf::Color(255, 220, 50),  20);
-    drawJudge("300", j300, sf::Color(100, 200, 255), 44);
-    drawJudge("200", j200, sf::Color(100, 255, 100), 68);
-    drawJudge("100", j100, sf::Color(100, 100, 255), 92);
-    drawJudge("50",  j50,  sf::Color(200, 100, 200), 116);
-    drawJudge("Miss",miss, sf::Color(255, 60,  60),  140);
+  //  drawJudge("320", j320, sf::Color(255, 220, 50),  20);
+  //  drawJudge("300", j300, sf::Color(100, 200, 255), 44);
+  //  drawJudge("200", j200, sf::Color(100, 255, 100), 68);
+  //  drawJudge("100", j100, sf::Color(100, 100, 255), 92);
+  //  drawJudge("50",  j50,  sf::Color(200, 100, 200), 116);
+  //  drawJudge("Miss",miss, sf::Color(255, 60,  60),  140);
 }
 
 void Renderer::preview(
@@ -382,6 +454,8 @@ void Renderer::preview(
         drawBackground();
         drawColumns(window_);
         drawKeys(activeKeys, window_);
+        updateBursts(notes, currentTime); 
+        drawBursts(currentTime, window_); 
         drawNotes(notes, scroll, currentTime, window_);
         drawHUD(notes, currentTime, window_);
 
@@ -437,6 +511,8 @@ void Renderer::exportVideo(
         rt.clear(COL_BACKGROUND);
         drawColumns(rt);
         drawKeys(activeKeys, rt);
+        updateBursts(notes, currentTime); 
+        drawBursts(currentTime, rt); 
         drawNotes(notes, scroll, currentTime, rt);
         drawHUD(notes, currentTime, rt);
 

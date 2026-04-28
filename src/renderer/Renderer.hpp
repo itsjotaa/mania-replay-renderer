@@ -5,6 +5,13 @@
 #include "engine/ScrollCalculator.hpp"
 #include "skinmanager/SkinManager.hpp"
 #include <SFML/Graphics.hpp>
+#include <vector> 
+
+struct HitBurst {
+    int col;           // which column (0-3)
+    int judgement;     // 0=miss, 1=50, 2=100, 3=200, 4=300, 5=320
+    long long spawnTime; // when it appeared (ms)
+};
 
 class Renderer {
 public:
@@ -47,6 +54,11 @@ private:
     void drawHUD(const std::vector<ProcessedNote>& notes,
                  long long currentTime, 
                  sf::RenderTarget& target); 
+    void updateBursts(const std::vector<ProcessedNote>& notes, long long currentTime);
+    void drawBursts(long long currentTime, sf::RenderTarget& target);
+    
+    std::vector<HitBurst> activeBursts_;
+    static constexpr long long BURST_DURATION = 600; // ms
     
     sf::Color colorForJudgement(Judgement j) const; 
 

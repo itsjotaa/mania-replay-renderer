@@ -202,6 +202,7 @@ void SkinManager::load(const std::string& oskPath) {
         keyDownTextures_[i] = textureFromBuffer(
             extractFileFromZip(zip, "mania-key" + c + "D.png"),
             "mania-key" + c + "D.png");
+            
     }
 
     // stage textures, global, not per column
@@ -228,6 +229,20 @@ void SkinManager::load(const std::string& oskPath) {
     hitTextures_[3] = textureFromBuffer(extractFileFromZip(zip, "mania-hit200.png"), "mania-hit200.png");
     hitTextures_[4] = textureFromBuffer(extractFileFromZip(zip, "mania-hit300.png"), "mania-hit300.png");
     hitTextures_[5] = textureFromBuffer(extractFileFromZip(zip, "mania-hit300g-0.png"), "mania-hit300g-0.png");
+
+    for (int i = 0; i < 10; i++) {
+        std::string name = "score-" + std::to_string(i) + ".png";
+        scoreDigits_[i] = textureFromBuffer(extractFileFromZip(zip, name), name);
+    }
+
+    for (int i = 0; i < 10; i++) {
+        std::string name = "combo-" + std::to_string(i) + ".png";
+        comboDigits_[i] = textureFromBuffer(extractFileFromZip(zip, name), name);
+    }
+    
+    scoreX_       = textureFromBuffer(extractFileFromZip(zip, "score-x.png"),       "score-x.png");
+    scorePercent_ = textureFromBuffer(extractFileFromZip(zip, "score-percent.png"), "score-percent.png");
+    scoreDot_     = textureFromBuffer(extractFileFromZip(zip, "score-dot.png"),      "score-dot.png");
 
     mz_zip_reader_end(&zip);
     loaded_ = true;

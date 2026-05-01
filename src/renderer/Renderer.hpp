@@ -40,6 +40,8 @@ public:
 private: 
     void drawBackground(); 
     void drawColumns(sf::RenderTarget& target); 
+    void drawStageHint(sf::RenderTarget& target);
+    void drawStageBottom(sf::RenderTarget& target);
 
     // target parameter lets both preview() and exportVideo() share same
     // draw calls, windows_ for preview, RenderTexture for export
@@ -50,6 +52,13 @@ private:
                    sf::RenderTarget& target); 
 
     void drawKeys(int activeKeys, sf::RenderTarget& target); 
+
+    enum class TextAlign { Left, Center, Right}; 
+
+    void drawSkinNumber(const std::string& text, float x, float y,
+                    float digitH, sf::RenderTarget& target, 
+                    bool useCombo = false,
+                    TextAlign align = TextAlign::Center);
 
     void drawHUD(const std::vector<ProcessedNote>& notes,
                  long long currentTime, 

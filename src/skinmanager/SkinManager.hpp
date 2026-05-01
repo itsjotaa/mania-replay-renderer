@@ -29,6 +29,11 @@ public:
     const sf::Texture& getStageRight()  const { return stageRightTexture_;  }
     const sf::Texture& getStageBottom() const { return stageBottomTexture_; }
     const sf::Texture& getStageHint()   const { return stageHintTexture_;   }
+    const sf::Texture& getScoreDigit(int d) const { return scoreDigits_[d]; }
+    const sf::Texture& getScoreX()       const { return scoreX_;       }
+    const sf::Texture& getScorePercent() const { return scorePercent_; }
+    const sf::Texture& getScoreDot()     const { return scoreDot_;     }
+    const sf::Texture& getComboDigit(int d) const { return comboDigits_[d]; }
 
     const ManiaSkinConfig& getConfig() const { return config_; }
 
@@ -55,14 +60,22 @@ private:
     std::array<sf::Texture, 2> noteTextures_;
     std::array<sf::Texture, 2> lnHeadTextures_;
     std::array<sf::Texture, 2> lnBodyTextures_;
+
     // no tail, use head flipped
     std::array<sf::Texture, 2> keyUpTextures_;
     std::array<sf::Texture, 2> keyDownTextures_;
+    std::array<sf::Texture, 10> scoreDigits_; 
+    std::array<sf::Texture, 10> comboDigits_;
+
     sf::Texture stageLeftTexture_;
     sf::Texture stageRightTexture_;
     sf::Texture stageBottomTexture_; 
     sf::Texture stageHintTexture_;
     sf::Texture hitTextures_[6]; //0=miss, 50, 100, 200, 300, 320
+    sf::Texture scoreX_; 
+    sf::Texture scorePercent_; 
+    sf::Texture scoreDot_;
+    
 
     // 4K uses 2 unique textures mirrored: cols 0,3 -> idx 0 / cols 1,2 -> idx 1
     static int colToIdx(int col) { return ( col == 1 || col == 2) ? 1 : 0; }

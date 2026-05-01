@@ -53,7 +53,7 @@ void Renderer::setSkin(SkinManager& skin) {
     // osu! renders at ~600px base height
     float scaleY  = (float)height_ / 480.0f;
     hitY_         = (int)(cfg.hitPosition * scaleY);
-    colWidth_     = (int)(cfg.columnWidths[0] * scaleY);
+    colWidth_     =(int)(cfg.columnWidths[0] * scaleY * 0.85f);
 
     int totalRealWidth = colWidth_ * 4;
     stageOffsetX_ = (width_ - totalRealWidth) / 2;
@@ -85,61 +85,74 @@ static int colCenterX(int col, int colWidth, int width) {
     return offsetX + col * colWidth + colWidth / 2;
 }
 
-void Renderer::drawBackground() {
-    window_.clear(COL_BACKGROUND);
-}
+// void Renderer::drawBackground() {
+//    window_.clear(COL_BACKGROUND);
+// }
 
 void Renderer::drawColumns(sf::RenderTarget& target) {
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
     int halfWidth  = totalWidth / 2;
 
-    // stage-left covers columns 0 and 1, up to the judgement line
+    // stage-left: positioned to the left of the stage
     {
         sf::Sprite left(skin_->getStageLeft());
         auto size = skin_->getStageLeft().getSize();
-        left.setScale({(float)halfWidth / size.x, (float)hitY_ / size.y});
-        left.setPosition({(float)offsetX, 0});
+        float scaleY  = (float)height_ / size.y;
+        float scaledW = size.x * scaleY;
+        left.setScale({scaleY, scaleY});
+        // right edge of sprite aligns with left edge of stage
+        left.setPosition({(float)offsetX - scaledW, 0.f});
         target.draw(left);
     }
 
-    // stage-right covers columns 2 and 3, up to the judgement line
+    // stage-right: positioned to the right of the stage
     {
         sf::Sprite right(skin_->getStageRight());
         auto size = skin_->getStageRight().getSize();
-        right.setScale({(float)halfWidth / size.x, (float)hitY_ / size.y});
-        right.setPosition({(float)(offsetX + halfWidth), 0});
+        float scaleY  = (float)height_ / size.y;
+        right.setScale({scaleY, scaleY});
+        // left edge of sprite aligns with right edge of stage
+        right.setPosition({(float)(offsetX + totalWidth), 0.f});
         target.draw(right);
     }
 
-    // stage-hint replaces the hardcoded judgement line
-    {
-        sf::Sprite hint(skin_->getStageHint());
-        auto size = skin_->getStageHint().getSize();
-        float hintH = 16.f; // thin strip, adjust if needed
-        hint.setScale({(float)totalWidth / size.x, hintH / size.y});
-        hint.setPosition({(float)offsetX, (float)hitY_ - hintH / 2});
-        target.draw(hint);
-    }
-
-// stage-bottom: thin strip at the very bottom of the screen
-  //  {
-  //      sf::Sprite bottom(skin_->getStageBottom());
-   //     auto size = skin_->getStageBottom().getSize();
-   //     float scaleX = (float)totalWidth / size.x;
-   //     float scaleY = scaleX; // preserve aspect ratio
-   //     float bottomH = size.y * scaleY;
-   //     bottom.setScale({scaleX, scaleY});
-   //     bottom.setPosition({(float)stageOffsetX_, (float)height_ - bottomH});
-  //      target.draw(bottom);
-  //  }
 
     // column dividers on top of the stage background
-    for (int i = 0; i <= 4; i++) {
-        sf::RectangleShape line({2.f, (float)height_});
-        line.setPosition({(float)(offsetX + i * colWidth_), 0});
-        line.setFillColor(COL_COLUMN_LINE);
-        target.draw(line);
+ //   for (int i = 0; i <= 4; i++) {
+ //       sf::RectangleShape line({2.f, (float)height_});
+ //       line.setPosition({(float)(offsetX + i * colWidth_), 0});
+ //       line.setFillColor(COL_COLUMN_LINE);
+ //       target.draw(line);
+ //   }
+}
+
+void Renderer::drawStageBottom(sf::RenderTarget& target) {
+    if (!skin_) return;  // safety check
+    int totalWidth = colWidth_ * 4;
+    sf::Sprite bottom(skin_->getStageBottom());
+    auto size = skin_->getStageBottom().getSize();
+    float scaleX  = (float)totalWidth / size.x;
+    float scaleY  = scaleX;
+    float scaledH = size.y * scaleY;
+    bottom.setScale({scaleX, scaleY});
+    bottom.setPosition({(float)stageOffsetX_, (float)height_ - scaledH});
+    target.draw(bottom);
+}
+
+void Renderer::drawStageHint(sf::RenderTarget& target) {
+    if (!skin_) return;
+    int offsetX = stageOffsetX_;
+    for (int col = 0; col < 4; col++) {
+        sf::Sprite h(skin_->getStageHint());
+        auto sz = skin_->getStageHint().getSize();
+        float scaleX  = (float)colWidth_ / sz.x;
+        float scaleY  = scaleX * 3.0f;
+        float scaledH = sz.y * scaleY;
+        h.setScale({scaleX, scaleY});
+        // center of sprite at hitY_
+        h.setPosition({(float)(offsetX + col * colWidth_), (float)hitY_ - scaledH / 4.2f});
+        target.draw(h);
     }
 }
 
@@ -151,7 +164,7 @@ void Renderer::drawNotes(
 ) {
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
-    int noteMargin = 4;
+    int noteMargin = 0;
 
     for (const auto& pn : notes) {
         if (!scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_))
@@ -223,10 +236,10 @@ void Renderer::drawKeys(int activeKeys, sf::RenderTarget& target) {
     for (int col = 0; col < 4; col++) {
         bool pressed = ((activeKeys >> col) & 1) != 0;
 
-        float x = offsetX + col * colWidth_ + keyMargin;
-        float y = hitY_ + 3;
-        float w = colWidth_ - keyMargin * 2;
-        float h = height_ - y;  // stretch to bottom of screen
+        float x = offsetX + col * colWidth_;  // sin margen
+        float y = hitY_; 
+        float w = (float)colWidth_;           // ancho completo de la columna
+        float h = height_ - y;               // altura hasta el borde
 
         const sf::Texture& tex = skin_->getKeyTexture(col, pressed);
         auto texSize = tex.getSize();
@@ -308,6 +321,45 @@ void Renderer::drawBursts(long long currentTime, sf::RenderTarget& target) {
     target.draw(sprite);
 }
 
+// draws a number using skin score digit sprites, centered at (cx, y)
+void Renderer::drawSkinNumber(const std::string& text, float x, float y,
+                               float digitH, sf::RenderTarget& target,
+                               bool useCombo, TextAlign align) {
+    // calculate total width
+    float totalW = 0;
+    for (char c : text) {
+        const sf::Texture* tex = nullptr;
+        if (c >= '0' && c <= '9')   tex = useCombo ? &skin_->getComboDigit(c - '0') : &skin_->getScoreDigit(c - '0');
+        else if (c == 'x')          tex = &skin_->getScoreX();
+        else if (c == '%')          tex = &skin_->getScorePercent();
+        else if (c == '.')          tex = &skin_->getScoreDot();
+        if (!tex) continue;
+        float scale = digitH / tex->getSize().y;
+        totalW += tex->getSize().x * scale;
+    }
+
+    // calculate start x based on alignment
+    float startX = x;
+    if (align == TextAlign::Center) startX = x - totalW / 2.f;
+    else if (align == TextAlign::Right) startX = x - totalW;
+    // Left: startX = x as-is
+
+    for (char c : text) {
+        const sf::Texture* tex = nullptr;
+        if (c >= '0' && c <= '9')   tex = useCombo ? &skin_->getComboDigit(c - '0') : &skin_->getScoreDigit(c - '0');
+        else if (c == 'x')          tex = &skin_->getScoreX();
+        else if (c == '%')          tex = &skin_->getScorePercent();
+        else if (c == '.')          tex = &skin_->getScoreDot();
+        if (!tex) continue;
+        float scale = digitH / tex->getSize().y;
+        sf::Sprite s(*tex);
+        s.setScale({scale, scale});
+        s.setPosition({startX, y});
+        target.draw(s);
+        startX += tex->getSize().x * scale;
+    }
+}
+
 void Renderer::drawHUD(
     const std::vector<ProcessedNote>& notes,
     long long currentTime,
@@ -348,28 +400,20 @@ void Renderer::drawHUD(
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
 
-    // score - top left
-    sf::Text scoreText(font_, std::to_string(score), 28);
-    scoreText.setFillColor(sf::Color::White);
-    scoreText.setPosition({(float)(offsetX - 10) - scoreText.getLocalBounds().size.x, 20});
-    target.draw(scoreText);
+// score - top right corner
+    drawSkinNumber(std::to_string(score), width_ - 20.f, 20, 36.f, target, 
+                   false, TextAlign::Right);
 
-    // accuracy - below score
+// accuracy - below score
     char accBuf[16];
     snprintf(accBuf, sizeof(accBuf), "%.2f%%", acc);
-    sf::Text accText(font_, accBuf, 22);
-    accText.setFillColor(sf::Color(180, 220, 255));
-    accText.setPosition({(float)(offsetX - 10) - accText.getLocalBounds().size.x, 56});
-    target.draw(accText);
+    drawSkinNumber(accBuf, width_ - 20.f, 64, 24.f, target, 
+                   false, TextAlign::Right);
 
-    // combo - center bottom
-    sf::Text comboText(font_, std::to_string(combo) + "x", 36);
-    comboText.setFillColor(sf::Color(255, 220, 50));
-    comboText.setPosition({
-        (float)width_ / 2 - comboText.getLocalBounds().size.x / 2,
-        (float)hitY_ - 80
-    });
-    target.draw(comboText);
+// combo - center using skin digits
+    float stageCenterX = stageOffsetX_ + (colWidth_ * 4) / 2.f;
+    drawSkinNumber(std::to_string(combo), stageCenterX, 
+                   (float)hitY_ - 140, 36.f, target, true);
 
     // judgement counters - top right
     auto drawJudge = [&](const std::string& label, int count, sf::Color color, float y) {
@@ -451,9 +495,11 @@ void Renderer::preview(
         }
 
         // draw everything
-        drawBackground();
+        window_.clear(sf::Color::Transparent);
         drawColumns(window_);
         drawKeys(activeKeys, window_);
+        drawStageHint(window_); 
+        drawStageBottom(window_); 
         updateBursts(notes, currentTime); 
         drawBursts(currentTime, window_); 
         drawNotes(notes, scroll, currentTime, window_);
@@ -508,9 +554,11 @@ void Renderer::exportVideo(
             else break;
         }
 
-        rt.clear(COL_BACKGROUND);
+        rt.clear(sf::Color::Transparent);
         drawColumns(rt);
         drawKeys(activeKeys, rt);
+        drawStageHint(rt); 
+        drawStageBottom(rt); 
         updateBursts(notes, currentTime); 
         drawBursts(currentTime, rt); 
         drawNotes(notes, scroll, currentTime, rt);

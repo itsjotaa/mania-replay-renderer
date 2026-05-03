@@ -13,6 +13,8 @@
 struct ManiaSkinConfig {
     int columnStart = 136;          // default osu! 4K value
     int hitPosition = 402;          // default
+    int scorePosition = 300; 
+    int comboPosition = 275; 
     std::array<int, 4> columnWidths = {45, 45, 45, 45};  // default
     std::array<int, 5> columnLineWidths = {2, 2, 2, 2, 2};
 };
@@ -34,6 +36,9 @@ public:
     const sf::Texture& getScorePercent() const { return scorePercent_; }
     const sf::Texture& getScoreDot()     const { return scoreDot_;     }
     const sf::Texture& getComboDigit(int d) const { return comboDigits_[d]; }
+    const sf::Texture& getLightingN(int frame) const { return lightingNTextures_[frame]; }
+    const sf::Texture& getLightingL(int frame) const { return lightingLTextures_[frame]; }
+    static constexpr int LIGHTING_FRAMES = 12;
 
     const ManiaSkinConfig& getConfig() const { return config_; }
 
@@ -65,7 +70,9 @@ private:
     std::array<sf::Texture, 2> keyUpTextures_;
     std::array<sf::Texture, 2> keyDownTextures_;
     std::array<sf::Texture, 10> scoreDigits_; 
-    std::array<sf::Texture, 10> comboDigits_;
+    std::array<sf::Texture, 10> comboDigits_;   
+    std::array<sf::Texture, 12> lightingNTextures_;
+    std::array<sf::Texture, 12> lightingLTextures_;
 
     sf::Texture stageLeftTexture_;
     sf::Texture stageRightTexture_;

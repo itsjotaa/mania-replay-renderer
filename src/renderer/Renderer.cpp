@@ -321,6 +321,72 @@ void Renderer::drawBursts(long long currentTime, sf::RenderTarget& target) {
     target.draw(sprite);
 }
 
+void Renderer::updateLighting(const std::vector<ProcessedNote>& notes,
+                               int activeKeys, long long currentTime) {
+    // spawn lighting when a key is pressed and a note is being hit
+    for (int col = 0; col < 4; col++) {
+        bool pressed = ((activeKeys >> col) & 1) != 0;
+        if (!pressed) continue;
+
+        // check if there's a note being hit on this column right now
+        for (const auto& pn : notes) {
+            if (pn.note.column != col) continue;
+            if (pn.hitTime == -1) continue;
+            if (std::abs(pn.hitTime - currentTime) > 16) continue;
+
+            // avoid duplicates
+            bool alreadySpawned = false;
+            for (const auto& l : activeLighting_) {
+                if (l.col == col && std::abs(l.spawnTime - currentTime) < 32) {
+                    alreadySpawned = true;
+                    break;
+                }
+            }
+            if (alreadySpawned) continue;
+
+            activeLighting_.push_back({col, pn.note.isHold, pn.hitTime});
+        }
+    }
+
+    // remove expired effects
+    activeLighting_.erase(
+        std::remove_if(activeLighting_.begin(), activeLighting_.end(),
+            [&](const LightingEffect& l) {
+                return currentTime - l.spawnTime > LIGHTING_DURATION;
+            }),
+        activeLighting_.end()
+    );
+}
+
+void Renderer::drawLighting(long long currentTime, sf::RenderTarget& target) {
+    for (const auto& l : activeLighting_) {
+        float progress = (float)(currentTime - l.spawnTime) / LIGHTING_DURATION;
+        int frame = (int)(progress * SkinManager::LIGHTING_FRAMES);
+        if (frame >= SkinManager::LIGHTING_FRAMES) continue;
+
+        const sf::Texture& tex = l.isHold
+            ? skin_->getLightingL(frame)
+            : skin_->getLightingN(frame);
+        auto texSize = tex.getSize();
+
+        // scale to column width
+        float scaleX  = (float)colWidth_ / texSize.x * 2.5f;
+        float scaledH = texSize.y * scaleX;
+
+        // center on column, positioned at hitY_
+        float x = stageOffsetX_ + l.col * colWidth_ + colWidth_ / 2.f - (texSize.x * scaleX) / 2.f;
+        float y = hitY_ - scaledH / 2.f + 40.f;
+
+        sf::RenderStates states;
+        states.blendMode = sf::BlendAdd;
+        
+        sf::Sprite sprite(tex);
+        sprite.setScale({scaleX, scaleX});
+        sprite.setPosition({x, y});
+        target.draw(sprite, states);
+    }
+}
+
 // draws a number using skin score digit sprites, centered at (cx, y)
 void Renderer::drawSkinNumber(const std::string& text, float x, float y,
                                float digitH, sf::RenderTarget& target,
@@ -400,20 +466,25 @@ void Renderer::drawHUD(
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
 
-// score - top right corner
-    drawSkinNumber(std::to_string(score), width_ - 20.f, 20, 36.f, target, 
-                   false, TextAlign::Right);
-
-// accuracy - below score
     char accBuf[16];
     snprintf(accBuf, sizeof(accBuf), "%.2f%%", acc);
-    drawSkinNumber(accBuf, width_ - 20.f, 64, 24.f, target, 
+
+    float scaleY   = (float)height_ / 480.0f;
+    float comboY   = hitY_ - 120.f;  
+    float scoreY   = 20.f;          
+
+    // score - right aligned at scorePosition Y
+    drawSkinNumber(std::to_string(score), width_ - 20.f, scoreY, 36.f, target,
+                   false, TextAlign::Right);
+                   
+    // accuracy - just below score
+    drawSkinNumber(accBuf, width_ - 20.f, scoreY + 40.f, 24.f, target,
                    false, TextAlign::Right);
 
-// combo - center using skin digits
+    // combo - centered on stage at comboPosition Y
     float stageCenterX = stageOffsetX_ + (colWidth_ * 4) / 2.f;
-    drawSkinNumber(std::to_string(combo), stageCenterX, 
-                   (float)hitY_ - 140, 36.f, target, true);
+    drawSkinNumber(std::to_string(combo), stageCenterX, comboY, 36.f, target,
+                   true, TextAlign::Center);
 
     // judgement counters - top right
     auto drawJudge = [&](const std::string& label, int count, sf::Color color, float y) {
@@ -501,6 +572,8 @@ void Renderer::preview(
         drawStageHint(window_); 
         drawStageBottom(window_); 
         updateBursts(notes, currentTime); 
+        updateLighting(notes, activeKeys, currentTime);  
+        drawLighting(currentTime, window_);              
         drawBursts(currentTime, window_); 
         drawNotes(notes, scroll, currentTime, window_);
         drawHUD(notes, currentTime, window_);
@@ -560,6 +633,8 @@ void Renderer::exportVideo(
         drawStageHint(rt); 
         drawStageBottom(rt); 
         updateBursts(notes, currentTime); 
+        updateLighting(notes, activeKeys, currentTime); 
+        drawLighting(currentTime, rt);              
         drawBursts(currentTime, rt); 
         drawNotes(notes, scroll, currentTime, rt);
         drawHUD(notes, currentTime, rt);

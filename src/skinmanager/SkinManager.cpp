@@ -149,6 +149,9 @@ ManiaSkinConfig SkinManager::parseSkinIni(const std::string& content) {
                 cfg.columnLineWidths[i++] = std::stoi(trim(token));
             }
         }
+
+        else if (key == "ScorePosition") cfg.scorePosition = std::stoi(val);
+        else if (key == "ComboPosition") cfg.comboPosition = std::stoi(val);
     }
 
     return cfg;
@@ -229,6 +232,14 @@ void SkinManager::load(const std::string& oskPath) {
     hitTextures_[3] = textureFromBuffer(extractFileFromZip(zip, "mania-hit200.png"), "mania-hit200.png");
     hitTextures_[4] = textureFromBuffer(extractFileFromZip(zip, "mania-hit300.png"), "mania-hit300.png");
     hitTextures_[5] = textureFromBuffer(extractFileFromZip(zip, "mania-hit300g-0.png"), "mania-hit300g-0.png");
+
+    // lighting animation frames
+    for (int i = 0; i < 12; i++) {
+        std::string nameN = "lightingN-" + std::to_string(i) + ".png";
+        std::string nameL = "lightingL-" + std::to_string(i) + ".png";
+        lightingNTextures_[i] = textureFromBuffer(extractFileFromZip(zip, nameN), nameN);
+        lightingLTextures_[i] = textureFromBuffer(extractFileFromZip(zip, nameL), nameL);
+    }
 
     for (int i = 0; i < 10; i++) {
         std::string name = "score-" + std::to_string(i) + ".png";

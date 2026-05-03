@@ -13,6 +13,12 @@ struct HitBurst {
     long long spawnTime; // when it appeared (ms)
 };
 
+struct LightingEffect {
+    int col;
+    bool isHold;
+    long long spawnTime;
+};
+
 class Renderer {
 public:
     Renderer(int width, int height);
@@ -65,9 +71,14 @@ private:
                  sf::RenderTarget& target); 
     void updateBursts(const std::vector<ProcessedNote>& notes, long long currentTime);
     void drawBursts(long long currentTime, sf::RenderTarget& target);
+    void updateLighting(const std::vector<ProcessedNote>& notes, int activeKeys, long long currentTime);
+    void drawLighting(long long currentTime, sf::RenderTarget& target);
     
     std::vector<HitBurst> activeBursts_;
     static constexpr long long BURST_DURATION = 600; // ms
+
+    std::vector<LightingEffect> activeLighting_;
+    static constexpr long long LIGHTING_DURATION = 400; // ms, ~12 frames at 30fps
     
     sf::Color colorForJudgement(Judgement j) const; 
 

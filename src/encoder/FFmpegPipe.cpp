@@ -23,19 +23,17 @@ FFmpegPipe::FFmpegPipe(
 
     if (!audioPath.empty()) {
         if (audioOffsetMs > 0) { 
-            //audio starts later than video: seek into audio file
             double offsetSec = audioOffsetMs / 1000.0; 
-            audioInput = "-ss " + std::to_string(offsetSec) + " -i " + audioPath + " "; 
+            audioInput = "-ss " + std::to_string(offsetSec) + " -i \"" + audioPath + "\" "; 
         } else if (audioOffsetMs < 0) { 
-            // video starts before audio: delay the audio
             long long delayMS = (long long)(-audioOffsetMs); 
-            audioInput = "-i " + audioPath + " "; 
+            audioInput = "-i \"" + audioPath + "\" "; 
             audioMap = "-map 0:v -map 1:a -af 'adelay=" + std::to_string(delayMS) + "|" + std::to_string(delayMS) + "' -c:a aac ";
         } else {
-            audioInput = "-i " + audioPath + " "; 
+            audioInput = "-i \"" + audioPath + "\" "; 
             audioMap = "-map 0:v -map 1:a -c:a aac "; 
-            }
         }
+    }
     // build the ffmpeg command
     // -f rawvideo        → input is raw video without compression
     // -pixel_format rgba → each pixel are 4 bytes: R, G, B, A 
@@ -57,7 +55,7 @@ FFmpegPipe::FFmpegPipe(
         "-pix_fmt yuv420p "
         "-preset fast "
         + audioMap
-        + outputPath;
+        + "\"" + outputPath + "\"";
 
     pipe_ = popen(cmd.c_str(), "w");
     if (!pipe_) {

@@ -25,6 +25,12 @@ int main() {
 
         // parse replay first to get the beatmap MD5
         auto replay = parseOsr(osrPath);
+        std::cout << "Replay judgements: 320=" << replay.count320 
+                  << " 300=" << replay.count300 
+                  << " 200=" << replay.count200
+                  << " 100=" << replay.count100
+                  << " 50=" << replay.count50
+                  << " miss=" << replay.countMiss << "\n";
 
         // .osz handling: extract audio, then let OsuFinder locate the correct .osu
         std::string audioPath;
@@ -52,6 +58,7 @@ int main() {
         auto beatmap = parseOsu(osuPath);
         auto notes   = processReplay(beatmap, replay);
         ScrollCalculator scrollCalc(beatmap.timingPoints, scroll /5.0);
+        
 
         std::cout << "Notes in beatmap: " << beatmap.notes.size() << "\n";
         std::cout << "Frames in replay: " << replay.frames.size() << "\n";

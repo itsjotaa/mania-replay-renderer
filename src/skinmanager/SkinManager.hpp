@@ -17,6 +17,13 @@ struct ManiaSkinConfig {
     int comboPosition = 275; 
     std::array<int, 4> columnWidths = {45, 45, 45, 45};  // default
     std::array<int, 5> columnLineWidths = {2, 2, 2, 2, 2};
+    std::array<sf::Color, 4> colourLight = {
+    sf::Color(102, 205, 107, 175),
+    sf::Color(69,  188, 250, 175),
+    sf::Color(69,  188, 250, 175),
+    sf::Color(102, 205, 107, 175)
+};
+
 };
 
 class SkinManager {
@@ -39,6 +46,7 @@ public:
     const sf::Texture& getLightingN(int frame) const { return lightingNTextures_[frame]; }
     const sf::Texture& getLightingL(int frame) const { return lightingLTextures_[frame]; }
     static constexpr int LIGHTING_FRAMES = 12;
+    const sf::Texture& getStageLight() const { return stageLightTexture_; }
 
     const ManiaSkinConfig& getConfig() const { return config_; }
 
@@ -82,6 +90,7 @@ private:
     sf::Texture scoreX_; 
     sf::Texture scorePercent_; 
     sf::Texture scoreDot_;
+    sf::Texture stageLightTexture_;
     
 
     // 4K uses 2 unique textures mirrored: cols 0,3 -> idx 0 / cols 1,2 -> idx 1

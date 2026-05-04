@@ -167,13 +167,23 @@ void Renderer::drawNotes(
     int noteMargin = 0;
 
     for (const auto& pn : notes) {
-        if (!scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_))
-            continue;
-
-        bool alreadyHit    = (pn.hitTime != -1 && pn.hitTime <= currentTime);
+        // held LNs are always visible until endTime passes
+        bool isBeingHeld = (pn.note.isHold && pn.hitTime != -1 && pn.hitTime <= currentTime);
+        
+        if (!isBeingHeld) {
+            if (!scroll.isVisible(pn.note.startTime, currentTime, hitY_, height_))
+                continue;
+        }
+        // for normal notes: skip if already hit or missed
+        // for LNs: skip only after endTime has passed
+        bool alreadyHit    = (pn.hitTime != -1 && pn.hitTime <= currentTime && !pn.note.isHold);
         bool alreadyMissed = (pn.judgement == Judgement::MISS &&
-                              currentTime > pn.note.startTime + 161);
-        if (alreadyHit || alreadyMissed) continue;
+                              pn.hitTime == -1 &&
+                              scroll.getNoteY(pn.note.startTime, currentTime, hitY_) > height_);
+        bool lnFinished    = (pn.note.isHold && pn.hitTime != -1 && 
+                              currentTime > pn.note.endTime);
+
+        if (alreadyHit || alreadyMissed || lnFinished) continue;
 
         int   col = pn.note.column;
         float x   = offsetX + col * colWidth_ + noteMargin;
@@ -185,12 +195,8 @@ void Renderer::drawNotes(
             drawScaledSprite(target, skin_->getNoteTexture(col),
                              x, y, w, /*anchorBottom=*/true);
         } else {
-            // --- long note: tail (top) → body (stretch) → head (bottom) ---
-            // drawing order matters: body first so head/tail render on top
-
             float endY = scroll.getNoteY(pn.note.endTime, currentTime, hitY_);
 
-            // measure head and tail heights so body fills the gap between them
             auto headSize = skin_->getLNHeadTexture(col).getSize();
             auto tailSize = skin_->getLNTailTexture(col).getSize();
             float headScale  = w / (float)headSize.x;
@@ -198,8 +204,12 @@ void Renderer::drawNotes(
             float headHeight = headSize.y * headScale;
             float tailHeight = tailSize.y * tailScale;
 
-            float bodyTop    = endY + tailHeight;   // bottom edge of tail
-            float bodyBottom = y   - headHeight;    // top edge of head
+            // when held, anchor body bottom to hitY_
+            float bodyBottom = (pn.hitTime != -1 && pn.hitTime <= currentTime)
+                               ? (float)hitY_ + headHeight  // extend into key area
+                               : y - headHeight;
+
+            float bodyTop    = endY + tailHeight;
             float bodyHeight = bodyBottom - bodyTop;
 
             // body: stretched vertically to fill the gap
@@ -221,9 +231,12 @@ void Renderer::drawNotes(
                 tail.setPosition({x, endY + tailHeight});
                 target.draw(tail);
             }
-            // head: at the bottom of the LN (startTime position), anchor bottom
-            drawScaledSprite(target, skin_->getLNHeadTexture(col),
-                             x, y, w, /*anchorBottom=*/true);
+
+            // head: only draw if not yet held
+            if (pn.hitTime == -1 || pn.hitTime > currentTime) {
+                drawScaledSprite(target, skin_->getLNHeadTexture(col),
+                                 x, y, w, /*anchorBottom=*/true);
+            }
         }
     }
 }
@@ -358,7 +371,23 @@ void Renderer::updateLighting(const std::vector<ProcessedNote>& notes,
     );
 }
 
-void Renderer::drawLighting(long long currentTime, sf::RenderTarget& target) {
+void Renderer::drawStageLighting(long long currentTime, sf::RenderTarget& target) {
+    for (const auto& l : activeLighting_) {
+        sf::Color col = skin_->getConfig().colourLight[l.col];
+        sf::Sprite stageLight(skin_->getStageLight());
+        auto slSize = skin_->getStageLight().getSize();
+        float slScaleX = (float)colWidth_ / slSize.x;
+        float slScaleY = (float)hitY_ / slSize.y;
+        stageLight.setScale({slScaleX, slScaleY});
+        stageLight.setPosition({(float)(stageOffsetX_ + l.col * colWidth_), (float)hitY_ * 0.5f});
+        stageLight.setColor(col);
+        sf::RenderStates statesLight;
+        statesLight.blendMode = sf::BlendAdd;
+        target.draw(stageLight, statesLight);
+    }
+}
+
+void Renderer::drawParticleLighting(long long currentTime, sf::RenderTarget& target) {
     for (const auto& l : activeLighting_) {
         float progress = (float)(currentTime - l.spawnTime) / LIGHTING_DURATION;
         int frame = (int)(progress * SkinManager::LIGHTING_FRAMES);
@@ -369,17 +398,13 @@ void Renderer::drawLighting(long long currentTime, sf::RenderTarget& target) {
             : skin_->getLightingN(frame);
         auto texSize = tex.getSize();
 
-        // scale to column width
         float scaleX  = (float)colWidth_ / texSize.x * 2.5f;
         float scaledH = texSize.y * scaleX;
-
-        // center on column, positioned at hitY_
         float x = stageOffsetX_ + l.col * colWidth_ + colWidth_ / 2.f - (texSize.x * scaleX) / 2.f;
         float y = hitY_ - scaledH / 2.f + 40.f;
 
         sf::RenderStates states;
         states.blendMode = sf::BlendAdd;
-        
         sf::Sprite sprite(tex);
         sprite.setScale({scaleX, scaleX});
         sprite.setPosition({x, y});
@@ -456,12 +481,49 @@ void Renderer::drawHUD(
         if (combo > maxCombo) maxCombo = combo;
     }
 
-    // calculate accuracy
-    int total = j320 + j300 + j200 + j100 + j50 + miss;
-    float acc = total > 0
-        ? (float)(j320*320 + j300*300 + j200*200 + j100*100 + j50*50)
-          / (float)(total * 320) * 100.f
+    int total = j320 + j300 + j200 + j100 + j50 + miss; 
+
+    // use replay judgement proportions for accurate display
+    int replayTotal = replayCount320_ + replayCount300_ + replayCount200_ +
+                      replayCount100_ + replayCount50_ + replayCountMiss_;
+    float finalAcc = replayTotal > 0
+        ? (float)(replayCount320_*320 + replayCount300_*300 + replayCount200_*200 +
+                  replayCount100_*100 + replayCount50_*50)
+          / (float)(replayTotal * 320) * 100.f
         : 100.f;
+
+    long long firstNoteTime = notes.empty() ? 0 : notes[0].note.startTime;
+    long long lastNoteTime  = notes.empty() ? 0 : notes.back().note.endTime;
+    float progress = (lastNoteTime > firstNoteTime)
+        ? std::clamp((float)(currentTime - firstNoteTime) / 
+                     (float)(lastNoteTime - firstNoteTime), 0.f, 1.f)
+        : 0.f;
+    float acc = 100.f + (finalAcc - 100.f) * progress;
+
+    // debug
+    static int printCount = 0;
+    if (printCount++ % 60 == 0) {
+        std::cout << "acc=" << acc << " finalAcc=" << finalAcc 
+                  << " progress=" << progress << "\n";
+    }
+
+    // calculate score progress based on how many notes have been judged
+    int totalNotes = (int)notes.size();
+    int judgedNotes = j320 + j300 + j200 + j100 + j50 + miss;
+    int displayScore = (totalNotes > 0)
+        ? (int)((float)judgedNotes / totalNotes * replayTotalScore_)
+        : 0;
+
+    if (total == (int)notes.size()) {
+        static bool printed = false;
+        if (!printed) {
+            printed = true;
+            std::cout << "Renderer: j320=" << j320 << " j300=" << j300 
+                      << " j200=" << j200 << " j100=" << j100 
+                      << " j50=" << j50 << " miss=" << miss << "\n";
+            std::cout << "Replay counts from .osr: check OsrParser output\n";
+        }
+    }
 
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
@@ -474,7 +536,7 @@ void Renderer::drawHUD(
     float scoreY   = 20.f;          
 
     // score - right aligned at scorePosition Y
-    drawSkinNumber(std::to_string(score), width_ - 20.f, scoreY, 36.f, target,
+    drawSkinNumber(std::to_string(displayScore), width_ - 20.f, scoreY, 36.f, target,
                    false, TextAlign::Right);
                    
     // accuracy - just below score
@@ -530,6 +592,15 @@ void Renderer::preview(
     backLabel.setFillColor(sf::Color(220, 220, 220));
     backLabel.setPosition({18.f, 16.f});
 
+    replayTotalScore_ = replay.totalScore;
+    replayMaxCombo_   = replay.maxCombo;
+    replayCount320_  = replay.count320;
+    replayCount300_  = replay.count300;
+    replayCount200_  = replay.count200;
+    replayCount100_  = replay.count100;
+    replayCount50_   = replay.count50;
+    replayCountMiss_ = replay.countMiss;
+
     while (window_.isOpen()) {
         // calculate current replay time
         auto now = std::chrono::steady_clock::now();
@@ -568,14 +639,15 @@ void Renderer::preview(
         // draw everything
         window_.clear(sf::Color::Transparent);
         drawColumns(window_);
+        updateLighting(notes, activeKeys, currentTime);
+        drawStageLighting(currentTime, window_);
         drawKeys(activeKeys, window_);
-        drawStageHint(window_); 
-        drawStageBottom(window_); 
-        updateBursts(notes, currentTime); 
-        updateLighting(notes, activeKeys, currentTime);  
-        drawLighting(currentTime, window_);              
-        drawBursts(currentTime, window_); 
-        drawNotes(notes, scroll, currentTime, window_);
+        drawStageHint(window_);
+        drawStageBottom(window_);
+        drawNotes(notes, scroll, currentTime, window_);  
+        updateBursts(notes, currentTime);
+        drawBursts(currentTime, window_);
+        drawParticleLighting(currentTime, window_);
         drawHUD(notes, currentTime, window_);
 
         window_.draw(backBtn);
@@ -617,6 +689,15 @@ void Renderer::exportVideo(
 
     std::cout << "Exporting " << totalFrames << " frames...\n";
 
+    replayTotalScore_ = replay.totalScore;
+    replayMaxCombo_   = replay.maxCombo;
+    replayCount320_  = replay.count320;
+    replayCount300_  = replay.count300;
+    replayCount200_  = replay.count200;
+    replayCount100_  = replay.count100;
+    replayCount50_   = replay.count50;
+    replayCountMiss_ = replay.countMiss;
+
     for (double t = startOffset; t < totalDuration; t += frameMs) {
         long long currentTime = (long long)t;
 
@@ -629,14 +710,15 @@ void Renderer::exportVideo(
 
         rt.clear(sf::Color::Transparent);
         drawColumns(rt);
+        updateLighting(notes, activeKeys, currentTime);
+        drawStageLighting(currentTime, rt);
         drawKeys(activeKeys, rt);
-        drawStageHint(rt); 
-        drawStageBottom(rt); 
-        updateBursts(notes, currentTime); 
-        updateLighting(notes, activeKeys, currentTime); 
-        drawLighting(currentTime, rt);              
-        drawBursts(currentTime, rt); 
-        drawNotes(notes, scroll, currentTime, rt);
+        drawStageHint(rt);
+        drawStageBottom(rt);
+        drawNotes(notes, scroll, currentTime, rt);  
+        updateBursts(notes, currentTime);
+        drawBursts(currentTime, rt);
+        drawParticleLighting(currentTime, rt);
         drawHUD(notes, currentTime, rt);
 
         rt.display();

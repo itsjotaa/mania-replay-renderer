@@ -72,7 +72,8 @@ private:
     void updateBursts(const std::vector<ProcessedNote>& notes, long long currentTime);
     void drawBursts(long long currentTime, sf::RenderTarget& target);
     void updateLighting(const std::vector<ProcessedNote>& notes, int activeKeys, long long currentTime);
-    void drawLighting(long long currentTime, sf::RenderTarget& target);
+    void drawStageLighting(long long currentTime, sf::RenderTarget& target);  
+    void drawParticleLighting(long long currentTime, sf::RenderTarget& target);  
     
     std::vector<HitBurst> activeBursts_;
     static constexpr long long BURST_DURATION = 600; // ms
@@ -90,4 +91,10 @@ private:
     bool fontLoaded_ = false; 
 
     SkinManager* skin_ = nullptr; // non-owning pointer, set via setSkin()
+
+    int replayTotalScore_ = 0;
+    int replayMaxCombo_   = 0;
+    int replayCount320_ = 0, replayCount300_ = 0, replayCount200_ = 0;
+    int replayCount100_ = 0, replayCount50_  = 0, replayCountMiss_ = 0;
+
 }; 

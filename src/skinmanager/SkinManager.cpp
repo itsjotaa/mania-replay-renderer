@@ -73,6 +73,22 @@ sf::Texture SkinManager::textureFromBuffer(const std::vector<uint8_t>& buf,
     return tex;
 }
 
+static sf::Color parseColor(const std::string& val) {
+    std::istringstream ss(val);
+    std::string token;
+    int rgba[4] = {255, 255, 255, 255};
+    int i = 0;
+    while (std::getline(ss, token, ',') && i < 4) {
+        // trim whitespace
+        auto start = token.find_first_not_of(" \t");
+        auto end   = token.find_last_not_of(" \t");
+        if (start != std::string::npos)
+            rgba[i] = std::stoi(token.substr(start, end - start + 1));
+        i++;
+    }
+    return sf::Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+}
+
 ManiaSkinConfig SkinManager::parseSkinIni(const std::string& content) {
     ManiaSkinConfig cfg;
 
@@ -152,6 +168,10 @@ ManiaSkinConfig SkinManager::parseSkinIni(const std::string& content) {
 
         else if (key == "ScorePosition") cfg.scorePosition = std::stoi(val);
         else if (key == "ComboPosition") cfg.comboPosition = std::stoi(val);
+        else if (key == "ColourLight1") cfg.colourLight[0] = parseColor(val);
+        else if (key == "ColourLight2") cfg.colourLight[1] = parseColor(val);
+        else if (key == "ColourLight3") cfg.colourLight[2] = parseColor(val);
+        else if (key == "ColourLight4") cfg.colourLight[3] = parseColor(val);
     }
 
     return cfg;
@@ -224,6 +244,10 @@ void SkinManager::load(const std::string& oskPath) {
     stageHintTexture_   = textureFromBuffer(
         extractFileFromZip(zip, "mania-stage-hint.png"),
         "mania-stage-hint.png");
+        
+    stageLightTexture_ = textureFromBuffer(
+    extractFileFromZip(zip, "mania-stage-light.png"),
+    "mania-stage-light.png");
 
     // hit burst textures — order matches Judgement enum
     hitTextures_[0] = textureFromBuffer(extractFileFromZip(zip, "mania-hit0.png"),   "mania-hit0.png");

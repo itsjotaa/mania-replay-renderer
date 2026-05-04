@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
-project(ManiaReplayRenderer)
+project(ManiaReplayRenderer VERSION 0.5)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+enable_testing()
 list(APPEND CMAKE_PREFIX_PATH "/usr/local")
 find_package(SFML 3 REQUIRED COMPONENTS Graphics Window System)
 find_package(nfd REQUIRED PATHS /usr/local/lib/cmake/nfd)

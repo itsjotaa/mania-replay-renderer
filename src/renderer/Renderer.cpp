@@ -85,10 +85,6 @@ static int colCenterX(int col, int colWidth, int width) {
     return offsetX + col * colWidth + colWidth / 2;
 }
 
-// void Renderer::drawBackground() {
-//    window_.clear(COL_BACKGROUND);
-// }
-
 void Renderer::drawColumns(sf::RenderTarget& target) {
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
@@ -119,12 +115,6 @@ void Renderer::drawColumns(sf::RenderTarget& target) {
 
 
     // column dividers on top of the stage background
- //   for (int i = 0; i <= 4; i++) {
- //       sf::RectangleShape line({2.f, (float)height_});
- //       line.setPosition({(float)(offsetX + i * colWidth_), 0});
- //       line.setFillColor(COL_COLUMN_LINE);
- //       target.draw(line);
- //   }
 }
 
 void Renderer::drawStageBottom(sf::RenderTarget& target) {
@@ -249,10 +239,10 @@ void Renderer::drawKeys(int activeKeys, sf::RenderTarget& target) {
     for (int col = 0; col < 4; col++) {
         bool pressed = ((activeKeys >> col) & 1) != 0;
 
-        float x = offsetX + col * colWidth_;  // sin margen
-        float y = hitY_; 
-        float w = (float)colWidth_;           // ancho completo de la columna
-        float h = height_ - y;               // altura hasta el borde
+        float x = offsetX + col * colWidth_;  // without margin
+        float y = hitY_;
+        float w = (float)colWidth_;           // full column width
+        float h = height_ - y;               // height to the edge
 
         const sf::Texture& tex = skin_->getKeyTexture(col, pressed);
         auto texSize = tex.getSize();
@@ -500,30 +490,12 @@ void Renderer::drawHUD(
         : 0.f;
     float acc = 100.f + (finalAcc - 100.f) * progress;
 
-    // debug
-    static int printCount = 0;
-    if (printCount++ % 60 == 0) {
-        std::cout << "acc=" << acc << " finalAcc=" << finalAcc 
-                  << " progress=" << progress << "\n";
-    }
-
     // calculate score progress based on how many notes have been judged
     int totalNotes = (int)notes.size();
     int judgedNotes = j320 + j300 + j200 + j100 + j50 + miss;
     int displayScore = (totalNotes > 0)
         ? (int)((float)judgedNotes / totalNotes * replayTotalScore_)
         : 0;
-
-    if (total == (int)notes.size()) {
-        static bool printed = false;
-        if (!printed) {
-            printed = true;
-            std::cout << "Renderer: j320=" << j320 << " j300=" << j300 
-                      << " j200=" << j200 << " j100=" << j100 
-                      << " j50=" << j50 << " miss=" << miss << "\n";
-            std::cout << "Replay counts from .osr: check OsrParser output\n";
-        }
-    }
 
     int totalWidth = colWidth_ * 4;
     int offsetX    = stageOffsetX_;
@@ -555,13 +527,6 @@ void Renderer::drawHUD(
         t.setPosition({(float)(offsetX + totalWidth + 10), y});
         target.draw(t);
     };
-
-  //  drawJudge("320", j320, sf::Color(255, 220, 50),  20);
-  //  drawJudge("300", j300, sf::Color(100, 200, 255), 44);
-  //  drawJudge("200", j200, sf::Color(100, 255, 100), 68);
-  //  drawJudge("100", j100, sf::Color(100, 100, 255), 92);
-  //  drawJudge("50",  j50,  sf::Color(200, 100, 200), 116);
-  //  drawJudge("Miss",miss, sf::Color(255, 60,  60),  140);
 }
 
 void Renderer::preview(

@@ -52,12 +52,12 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
     size_t totalOut = decompressed.size() - strm.avail_out; 
     lzma_end(&strm); 
 
-    // convert descompressed bytes to text string
-    std::string text(decompressed.begin(), decompressed.begin() + totalOut); 
+    // convert decompressed bytes to text string
+    std::string text(decompressed.begin(), decompressed.begin() + totalOut);
 
-    // parse frame per frame
-    // format for each frame is: delta|keys|x|y 
-    // frames are separated by commas  
+    // parse frame by frame
+    // format for each frame is: delta|keys|x|y
+    // frames are separated by commas
     std::vector<KeyFrame> frames; 
     long long currentTime = 0; 
 
@@ -67,8 +67,8 @@ static std::vector<KeyFrame> parseFrames(const std::vector<uint8_t>& compressed)
     while (std::getline(ss, frameStr, ',')) {
         if (frameStr.empty()) continue; 
 
-        //split 4 fields by '|'
-        std::stringstream ss2(frameStr); 
+        // split 4 fields by '|'
+        std::stringstream ss2(frameStr);
         std::string part; 
         std::vector<std::string> parts; 
         while (std::getline(ss2, part, '|')) {
@@ -138,7 +138,7 @@ ReplayData parseOsr(const std::string& path) {
     uint32_t mods;
     fread(&mods, 4, 1, f);
 
-    // health bard and timestamp, not needed
+    // health bar and timestamp, not needed
     readOsuString(f);
     uint64_t timestamp;
     fread(&timestamp, 8, 1, f);

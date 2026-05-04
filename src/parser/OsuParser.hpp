@@ -12,7 +12,7 @@ struct Note {
 
 // a timing point, defines BPM or scroll velocity 
 struct TimingPoint { 
-    long long offset;   // when thits point takes effect (ms)
+    long long offset;   // when this point takes effect (ms)
     double msPerBeat;   // if positive: real BPM. if negative: SV
     bool isInherited;   // false = BPM, true = SV 
 }; 
